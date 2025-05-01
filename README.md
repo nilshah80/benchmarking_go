@@ -1,6 +1,6 @@
 # Go Benchmarking Tool
 
-A powerful HTTP benchmarking tool written in Go, similar to bombardier and other load testing tools.
+A powerful HTTP benchmarking tool written in Go, similar to bombardier and other load testing tools. This tool is designed for API performance testing with detailed metrics and flexible configuration options.
 
 ## Features
 
@@ -11,8 +11,12 @@ A powerful HTTP benchmarking tool written in Go, similar to bombardier and other
 - Progress bar with real-time updates
 - Graceful shutdown with Ctrl+C
 - Configurable request timeout
+- Robust error handling for context cancellation
+- Docker support for containerized execution
 
 ## Installation
+
+### Local Build
 
 ```bash
 # Clone the repository
@@ -22,6 +26,18 @@ cd benchmarking_go
 # Build the binary
 go build -o benchmarking_go
 ```
+
+### Docker Build
+
+```bash
+# Build the Docker image
+docker build -t benchmarking_go .
+
+# Run the benchmarking tool with Docker
+docker run --network host benchmarking_go -u https://example.com -c 10 -d 5
+```
+
+Note: The `--network host` flag allows the container to use the host's network, which is important for accurate benchmarking.
 
 ## Usage
 
@@ -68,6 +84,16 @@ Options:
 ./benchmarking_go -u https://example.com -c 10 -r 50 --timeout 10
 ```
 
+### Using Docker
+
+```bash
+# With fixed number of requests
+docker run --network host benchmarking_go -u https://example.com -c 10 -r 100
+
+# With duration-based benchmarking
+docker run --network host benchmarking_go -u https://example.com -c 10 -d 30
+```
+
 ## Output
 
 The tool provides detailed statistics after the benchmark completes:
@@ -79,6 +105,36 @@ The tool provides detailed statistics after the benchmark completes:
 - Error details if any occurred
 - Throughput in MB/s
 
+## Technical Details
+
+### Error Handling
+
+The tool includes robust error handling, particularly for context cancellation and timeouts:
+
+- Context-related errors are filtered from the output statistics
+- Each request uses an independent context with a reasonable timeout
+- Multiple cancellation checks throughout request processing ensure clean shutdown
+
+### Docker Support
+
+The included Dockerfile creates a minimal Alpine-based image with:
+
+- Multi-stage build for smaller image size
+- CA certificates included for HTTPS support
+- Proper entrypoint configuration
+
 ## Comparison with Other Tools
 
 This benchmarking tool is designed to be similar to popular tools like bombardier and wrk, but with a focus on detailed statistics and ease of use. It provides a comprehensive view of API performance with minimal setup.
+
+## Project Structure
+
+```
+benchmarking_go/
+├── main.go           # Main application code
+├── go.mod            # Go module definition
+├── .gitignore        # Git ignore file
+├── Dockerfile        # Docker build configuration
+├── .dockerignore     # Docker ignore file
+└── README.md         # This documentation
+```
