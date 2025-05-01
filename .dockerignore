@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+benchmarking_go
+
+# Test files
+*_test.go
+*.test
+*.out
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Documentation
+README.md
+LICENSE
+
+# Misc
+.env
+*.log
