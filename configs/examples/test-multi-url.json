@@ -1,0 +1,30 @@
+{
+  "name": "Multi-URL Test",
+  "description": "Test multiple endpoints with httpbin.org",
+  "settings": {
+    "concurrentUsers": 3,
+    "duration": "10s",
+    "timeout": "15s"
+  },
+  "requests": [
+    {
+      "name": "Get Request",
+      "url": "https://httpbin.org/get",
+      "method": "GET",
+      "weight": 50
+    },
+    {
+      "name": "Headers",
+      "url": "https://httpbin.org/headers",
+      "method": "GET",
+      "weight": 30
+    },
+    {
+      "name": "IP",
+      "url": "https://httpbin.org/ip",
+      "method": "GET",
+      "weight": 20
+    }
+  ]
+}
+

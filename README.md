@@ -4,15 +4,22 @@ A powerful HTTP benchmarking tool written in Go, similar to bombardier and other
 
 ## Features
 
-- Concurrent request execution with configurable number of users
-- Support for custom HTTP methods, headers, and request bodies
-- Two benchmarking modes: fixed number of requests or duration-based
-- Detailed statistics including latency distribution and throughput
-- Progress bar with real-time updates
-- Graceful shutdown with Ctrl+C
-- Configurable request timeout
-- Robust error handling for context cancellation
-- Docker support for containerized execution
+- **JSON Configuration**: Define complex benchmarks in JSON files for easy maintenance and version control
+- **Multiple URL Support**: Test multiple endpoints in a single run with weighted distribution
+- **Concurrent Execution**: Configurable number of concurrent users/connections
+- **Flexible Modes**: Fixed number of requests or duration-based benchmarking
+- **Custom Requests**: Support for custom HTTP methods, headers, and request bodies
+- **Rate Limiting**: Control requests per second (`--rate`)
+- **Ramp-Up Period**: Gradually start workers (`--ramp-up`)
+- **JSON/CSV Output**: Machine-readable output for CI/CD integration and data analysis
+- **Custom Percentiles**: Configure which latency percentiles to report (`-p`)
+- **TLS Options**: Skip certificate verification for self-signed certs (`--insecure`)
+- **Keep-Alive Control**: Disable HTTP keep-alive connections (`--disable-keepalive`)
+- **Quiet/Verbose Modes**: Control output verbosity (`-q`, `-V`)
+- **Detailed Statistics**: Latency distribution, percentiles, throughput metrics
+- **Progress Bar**: Real-time progress updates
+- **Graceful Shutdown**: Clean shutdown with Ctrl+C
+- **Docker Support**: Containerized execution
 
 ## Installation
 
@@ -24,7 +31,10 @@ git clone https://github.com/yourusername/benchmarking_go.git
 cd benchmarking_go
 
 # Build the binary
-go build -o benchmarking_go
+go build -o benchmarking_go ./cmd/
+
+# Or on Windows
+go build -o benchmarking_go.exe ./cmd/
 ```
 
 ### Docker Build
@@ -42,46 +52,109 @@ Note: The `--network host` flag allows the container to use the host's network, 
 ## Usage
 
 ```
-Benchmarking Go HTTP Client
+Benchmarking Go HTTP Client v2.1
 Usage: benchmarking_go [options]
 
 Options:
   -u, --url <url>                  The URL to benchmark
-  -c, --concurrent-users <number>  Number of concurrent users
-  -r, --requests-per-user <number> Number of requests per user
+  -c, --concurrent-users <number>  Number of concurrent users (default: 10)
+  -r, --requests-per-user <number> Number of requests per user (default: 100)
   -d, --duration <seconds>         Duration in seconds for the benchmark
-  -m, --method <GET|POST|PUT|...>  HTTP method to use
+  -m, --method <GET|POST|PUT|...>  HTTP method to use (default: GET)
   -H, --header <header:value>      Custom header to include in the request
   -b, --body <text>                Request body for POST/PUT
   -t, --content-type <type>        Content-Type of the request body
   --timeout <seconds>              Timeout in seconds for each request (default: 30)
+  --config <file>                  Path to JSON configuration file
+  -o, --output <format>            Output format: json, csv, or empty for console
+  --output-file <file>             Output file path (default: stdout)
+  -k, --insecure                   Skip TLS certificate verification
+
+Rate & Connection Options:
+  -R, --rate <number>              Rate limit in requests per second (0 = unlimited)
+  --ramp-up <seconds>              Gradually start workers over this duration
+  --disable-keepalive              Disable HTTP keep-alive connections
+
+Output Options:
+  -q, --quiet                      Quiet mode - only show final summary line
+  -V, --verbose                    Verbose mode - show detailed request info
+  -p, --percentiles <list>         Custom percentiles (e.g., '50,90,95,99')
+
+Other:
+  -v, --version                    Display version
   -h, --help                       Display this help message
 ```
 
 ## Examples
 
-### Basic GET request
+### Basic GET Request
 
 ```bash
 ./benchmarking_go -u https://example.com -c 10 -r 100
 ```
 
-### POST request with JSON body
+### POST Request with JSON Body
 
 ```bash
 ./benchmarking_go -u https://api.example.com/data -m POST -b '{"key":"value"}' -H "Authorization:Bearer token" -c 5 -d 30
 ```
 
-### Running for a specific duration
+### Duration-Based Benchmark
 
 ```bash
 ./benchmarking_go -u https://example.com -c 20 -d 60
 ```
 
-### Setting a custom timeout
+### Using JSON Configuration File
 
 ```bash
-./benchmarking_go -u https://example.com -c 10 -r 50 --timeout 10
+./benchmarking_go --config benchmark.json
+```
+
+### JSON Output for CI/CD
+
+```bash
+./benchmarking_go -u https://example.com -c 10 -d 30 -o json > results.json
+```
+
+### Skip TLS Verification (Self-Signed Certs)
+
+```bash
+./benchmarking_go -u https://localhost:8443 -k
+```
+
+### Rate Limiting
+
+```bash
+# Limit to 100 requests per second
+./benchmarking_go -u https://example.com -c 20 -d 60 --rate 100
+```
+
+### Ramp-Up Period
+
+```bash
+# Gradually start 50 workers over 10 seconds
+./benchmarking_go -u https://example.com -c 50 -d 60 --ramp-up 10
+```
+
+### Custom Percentiles
+
+```bash
+# Report p50, p90, p95, p99 percentiles
+./benchmarking_go -u https://example.com -c 10 -d 30 -p 50,90,95,99
+```
+
+### CSV Output
+
+```bash
+./benchmarking_go -u https://example.com -c 10 -d 30 -o csv > results.csv
+```
+
+### Quiet Mode
+
+```bash
+# Only show final summary line
+./benchmarking_go -u https://example.com -c 10 -r 100 -q
 ```
 
 ### Using Docker
@@ -92,49 +165,280 @@ docker run --network host benchmarking_go -u https://example.com -c 10 -r 100
 
 # With duration-based benchmarking
 docker run --network host benchmarking_go -u https://example.com -c 10 -d 30
+
+# With JSON config (mount config directory)
+docker run --network host -v $(pwd)/configs:/configs benchmarking_go --config /configs/benchmark.json
 ```
 
-## Output
+## JSON Configuration
 
-The tool provides detailed statistics after the benchmark completes:
+For complex benchmarks, you can use a JSON configuration file. This is especially useful for:
+- Testing multiple endpoints with weighted distribution
+- Storing request bodies without command-line escaping
+- Reusing configurations across environments
+- CI/CD pipelines
 
-- Request rate (requests per second)
-- Latency statistics (average, standard deviation, maximum)
-- Latency distribution (50th, 75th, 90th, and 99th percentiles)
-- HTTP status code summary
-- Error details if any occurred
-- Throughput in MB/s
+### Simple Example
 
-## Technical Details
+```json
+{
+  "name": "Simple API Benchmark",
+  "settings": {
+    "concurrentUsers": 10,
+    "duration": "30s",
+    "timeout": "10s"
+  },
+  "requests": [
+    {
+      "name": "Homepage",
+      "url": "https://example.com/",
+      "method": "GET"
+    }
+  ]
+}
+```
 
-### Error Handling
+### Multiple URLs with Weights
 
-The tool includes robust error handling, particularly for context cancellation and timeouts:
+```json
+{
+  "name": "Multi-URL Benchmark",
+  "settings": {
+    "concurrentUsers": 20,
+    "duration": "60s"
+  },
+  "variables": {
+    "baseUrl": "https://api.example.com"
+  },
+  "defaultHeaders": {
+    "Accept": "application/json"
+  },
+  "requests": [
+    {
+      "name": "Get Users",
+      "url": "{{baseUrl}}/users",
+      "method": "GET",
+      "weight": 50
+    },
+    {
+      "name": "Get Products",
+      "url": "{{baseUrl}}/products",
+      "method": "GET",
+      "weight": 30
+    },
+    {
+      "name": "Health Check",
+      "url": "{{baseUrl}}/health",
+      "method": "GET",
+      "weight": 20
+    }
+  ]
+}
+```
 
-- Context-related errors are filtered from the output statistics
-- Each request uses an independent context with a reasonable timeout
-- Multiple cancellation checks throughout request processing ensure clean shutdown
+### POST Request with Body
 
-### Docker Support
+```json
+{
+  "name": "POST Request Benchmark",
+  "settings": {
+    "concurrentUsers": 5,
+    "requestsPerUser": 100
+  },
+  "requests": [
+    {
+      "name": "Create User",
+      "url": "https://api.example.com/users",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer token123"
+      },
+      "body": {
+        "username": "testuser",
+        "email": "test@example.com"
+      }
+    }
+  ]
+}
+```
 
-The included Dockerfile creates a minimal Alpine-based image with:
+### Using Environment Variables
 
-- Multi-stage build for smaller image size
-- CA certificates included for HTTPS support
-- Proper entrypoint configuration
+```json
+{
+  "variables": {
+    "baseUrl": "{{env \"API_BASE_URL\"}}",
+    "apiKey": "{{env \"API_KEY\"}}"
+  },
+  "defaultHeaders": {
+    "X-API-Key": "{{apiKey}}"
+  },
+  "requests": [
+    {
+      "url": "{{baseUrl}}/api/endpoint",
+      "method": "GET"
+    }
+  ]
+}
+```
 
-## Comparison with Other Tools
+### JSON Output Configuration
 
-This benchmarking tool is designed to be similar to popular tools like bombardier and wrk, but with a focus on detailed statistics and ease of use. It provides a comprehensive view of API performance with minimal setup.
+```json
+{
+  "name": "CI/CD Benchmark",
+  "settings": {
+    "concurrentUsers": 20,
+    "duration": "60s",
+    "insecure": true
+  },
+  "requests": [
+    {
+      "url": "https://api.example.com/health",
+      "method": "GET"
+    }
+  ],
+  "output": {
+    "format": "json",
+    "file": "benchmark-results.json"
+  }
+}
+```
+
+## Output Formats
+
+### Console Output (Default)
+
+```
+Statistics        Avg      Stdev        Max
+  Reqs/sec       1523.45    125.32    1892.00
+  Latency       12.35ms    3.21ms    45.67ms
+  Latency Distribution
+     50%    11.23ms
+     75%    14.56ms
+     90%    18.90ms
+     99%    35.12ms
+  HTTP codes:
+    1xx - 0, 2xx - 15234, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 0
+  Throughput:   12.45MB/s
+```
+
+### JSON Output
+
+```json
+{
+  "name": "API Benchmark",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "duration_seconds": 30.5,
+  "total_requests": 15234,
+  "success_count": 15234,
+  "failure_count": 0,
+  "requests_per_second": {
+    "average": 1523.45,
+    "std_dev": 125.32,
+    "max": 1892.00
+  },
+  "latency": {
+    "average": "12.35ms",
+    "std_dev": "3.21ms",
+    "min": "5.12ms",
+    "max": "45.67ms",
+    "percentiles": {
+      "p50": "11.23ms",
+      "p75": "14.56ms",
+      "p90": "18.90ms",
+      "p99": "35.12ms"
+    }
+  },
+  "http_codes": {
+    "1xx": 0,
+    "2xx": 15234,
+    "3xx": 0,
+    "4xx": 0,
+    "5xx": 0,
+    "other": 0
+  },
+  "throughput": {
+    "total_bytes": 15234000,
+    "mb_per_second": 12.45
+  }
+}
+```
 
 ## Project Structure
 
 ```
 benchmarking_go/
-├── main.go           # Main application code
-├── go.mod            # Go module definition
-├── .gitignore        # Git ignore file
-├── Dockerfile        # Docker build configuration
-├── .dockerignore     # Docker ignore file
-└── README.md         # This documentation
+├── cmd/
+│   ├── main.go                  # Application entry point
+│   ├── cli.go                   # CLI flag parsing and configuration
+│   └── help.go                  # Help text and examples
+├── pkg/
+│   ├── config/
+│   │   └── config.go            # Configuration loading and parsing
+│   ├── benchmark/
+│   │   ├── stats.go             # Statistics tracking
+│   │   ├── runner.go            # Benchmark execution logic
+│   │   ├── request.go           # HTTP request processing
+│   │   └── selector.go          # Weighted request selector & rate limiter
+│   ├── output/
+│   │   ├── format.go            # Latency formatting utilities
+│   │   ├── console.go           # Console output
+│   │   ├── json.go              # JSON output
+│   │   └── csv.go               # CSV output
+│   └── progress/
+│       └── progress.go          # Progress bar
+├── configs/
+│   └── examples/
+│       ├── simple.json          # Simple benchmark example
+│       ├── multi-url.json       # Multiple URL example
+│       ├── post-request.json    # POST request example
+│       └── ci-benchmark.json    # CI/CD configuration example
+├── go.mod                       # Go module definition
+├── Dockerfile                   # Docker build configuration
+├── README.md                    # This documentation
+├── EXAMPLES.md                  # Comprehensive usage examples
+└── plan.md                      # Feature roadmap
 ```
+
+## Technical Details
+
+### Error Handling
+
+The tool includes robust error handling:
+- Context-related errors are filtered from the output statistics
+- Each request uses an independent context with a reasonable timeout
+- Multiple cancellation checks throughout request processing ensure clean shutdown
+
+### TLS Configuration
+
+Use `--insecure` or `-k` flag to skip TLS certificate verification. This is useful for:
+- Self-signed certificates
+- Internal/development servers
+- Testing environments
+
+### Docker Support
+
+The included Dockerfile creates a minimal Alpine-based image with:
+- Multi-stage build for smaller image size (~15MB)
+- CA certificates included for HTTPS support
+- Proper entrypoint configuration
+
+## Comparison with Other Tools
+
+| Feature | benchmarking_go | bombardier | wrk | hey |
+|---------|-----------------|------------|-----|-----|
+| JSON Config | ✅ | ❌ | ❌ | ❌ |
+| Multiple URLs | ✅ | ❌ | ❌ | ❌ |
+| Weighted Distribution | ✅ | ❌ | ❌ | ❌ |
+| JSON Output | ✅ | ✅ | ❌ | ❌ |
+| Custom Headers | ✅ | ✅ | ✅ | ✅ |
+| Request Body | ✅ | ✅ | ❌ | ✅ |
+| Duration Mode | ✅ | ✅ | ✅ | ✅ |
+| Docker | ✅ | ✅ | ❌ | ❌ |
+
+## License
+
+MIT License

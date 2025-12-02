@@ -1,0 +1,37 @@
+{
+  "name": "CI/CD Performance Gate",
+  "description": "Benchmark configuration for CI/CD pipelines with JSON output",
+  "settings": {
+    "concurrentUsers": 20,
+    "duration": "60s",
+    "timeout": "10s",
+    "insecure": true
+  },
+  "variables": {
+    "baseUrl": "{{env \"API_BASE_URL\"}}",
+    "apiKey": "{{env \"API_KEY\"}}"
+  },
+  "defaultHeaders": {
+    "X-API-Key": "{{apiKey}}",
+    "Accept": "application/json"
+  },
+  "requests": [
+    {
+      "name": "Critical Endpoint",
+      "url": "{{baseUrl}}/api/critical",
+      "method": "GET",
+      "weight": 70
+    },
+    {
+      "name": "Health Check",
+      "url": "{{baseUrl}}/health",
+      "method": "GET",
+      "weight": 30
+    }
+  ],
+  "output": {
+    "format": "json",
+    "file": "benchmark-results.json"
+  }
+}
+

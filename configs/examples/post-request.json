@@ -1,0 +1,32 @@
+{
+  "name": "POST Request Benchmark",
+  "description": "Benchmark POST requests with JSON body",
+  "settings": {
+    "concurrentUsers": 5,
+    "requestsPerUser": 100,
+    "timeout": "30s"
+  },
+  "variables": {
+    "baseUrl": "https://api.example.com/v1"
+  },
+  "defaultHeaders": {
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+  },
+  "requests": [
+    {
+      "name": "Create User",
+      "url": "{{baseUrl}}/users",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer your-token-here"
+      },
+      "body": {
+        "username": "testuser",
+        "email": "test@example.com",
+        "role": "user"
+      }
+    }
+  ]
+}
+

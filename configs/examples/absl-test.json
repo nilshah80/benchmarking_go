@@ -1,0 +1,28 @@
+{
+  "name": "ABSL Mutual Fund API Test",
+  "description": "Testing multiple fund endpoints with minimal load",
+  "settings": {
+    "concurrentUsers": 1,
+    "requestsPerUser": 2,
+    "timeout": "30s"
+  },
+  "defaultHeaders": {
+    "Accept": "application/json",
+    "User-Agent": "benchmarking_go/2.1"
+  },
+  "requests": [
+    {
+      "name": "ACTR Fund Details (UAT)",
+      "url": "https://mutualfundbeta.abslmfbeta.com/portal/ipapi/uat/master-sidecar/products/details?fundCode=ACTR",
+      "method": "GET",
+      "weight": 50
+    },
+    {
+      "name": "GOLD Fund Details (Prod)",
+      "url": "https://mutualfund.adityabirlacapital.com/portal/ipapi/api/products/details?fundCode=GOLD",
+      "method": "GET",
+      "weight": 50
+    }
+  ]
+}
+

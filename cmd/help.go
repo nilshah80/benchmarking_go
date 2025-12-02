@@ -1,0 +1,70 @@
+// Package main is the entry point for the benchmarking tool
+package main
+
+import "fmt"
+
+// displayHelp shows the help message with all options and examples
+func displayHelp() {
+	fmt.Printf("Benchmarking Go HTTP Client v%s\n", version)
+	fmt.Println("Usage: benchmarking_go [options]")
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  -u, --url <url>                  The URL to benchmark")
+	fmt.Println("  -c, --concurrent-users <number>  Number of concurrent users (default: 10)")
+	fmt.Println("  -r, --requests-per-user <number> Number of requests per user (default: 100)")
+	fmt.Println("  -d, --duration <seconds>         Duration in seconds for the benchmark")
+	fmt.Println("  -m, --method <GET|POST|PUT|...>  HTTP method to use (default: GET)")
+	fmt.Println("  -H, --header <header:value>      Custom header to include in the request")
+	fmt.Println("  -b, --body <text>                Request body for POST/PUT")
+	fmt.Println("  -t, --content-type <type>        Content-Type of the request body")
+	fmt.Println("  --timeout <seconds>              Timeout in seconds for each request (default: 30)")
+	fmt.Println("  --config <file>                  Path to JSON configuration file")
+	fmt.Println("  -o, --output <format>            Output format: json, csv, or empty for console")
+	fmt.Println("  --output-file <file>             Output file path (default: stdout)")
+	fmt.Println("  -k, --insecure                   Skip TLS certificate verification")
+	fmt.Println()
+	fmt.Println("Rate & Connection Options:")
+	fmt.Println("  -R, --rate <number>              Rate limit in requests per second (0 = unlimited)")
+	fmt.Println("  --ramp-up <seconds>              Gradually start workers over this duration")
+	fmt.Println("  --disable-keepalive              Disable HTTP keep-alive connections")
+	fmt.Println()
+	fmt.Println("Output Options:")
+	fmt.Println("  -q, --quiet                      Quiet mode - only show final summary line")
+	fmt.Println("  -V, --verbose                    Verbose mode - show detailed request info")
+	fmt.Println("  -p, --percentiles <list>         Custom percentiles (e.g., '50,90,95,99,99.9')")
+	fmt.Println()
+	fmt.Println("Other:")
+	fmt.Println("  -v, --version                    Display version")
+	fmt.Println("  -h, --help                       Display this help message")
+	fmt.Println()
+	displayExamples()
+}
+
+// displayExamples shows usage examples
+func displayExamples() {
+	fmt.Println("Examples:")
+	fmt.Println("  # Simple URL benchmark")
+	fmt.Println("  benchmarking_go -u https://example.com -c 20 -r 50")
+	fmt.Println()
+	fmt.Println("  # Duration-based benchmark with rate limiting")
+	fmt.Println("  benchmarking_go -u https://example.com -c 20 -d 30 --rate 100")
+	fmt.Println()
+	fmt.Println("  # Benchmark with ramp-up period")
+	fmt.Println("  benchmarking_go -u https://example.com -c 50 -d 60 --ramp-up 10")
+	fmt.Println()
+	fmt.Println("  # Custom percentiles")
+	fmt.Println("  benchmarking_go -u https://example.com -c 10 -d 30 -p 50,90,95,99")
+	fmt.Println()
+	fmt.Println("  # Using JSON configuration file")
+	fmt.Println("  benchmarking_go --config benchmark.json")
+	fmt.Println()
+	fmt.Println("  # JSON output for CI/CD")
+	fmt.Println("  benchmarking_go --config benchmark.json -o json > results.json")
+	fmt.Println()
+	fmt.Println("  # CSV output for data analysis")
+	fmt.Println("  benchmarking_go -u https://example.com -c 10 -d 30 -o csv > results.csv")
+	fmt.Println()
+	fmt.Println("  # Quiet mode with minimal output")
+	fmt.Println("  benchmarking_go -u https://example.com -c 10 -r 100 -q")
+}
+

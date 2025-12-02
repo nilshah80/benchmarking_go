@@ -1,0 +1,41 @@
+{
+  "name": "Multi-URL Benchmark",
+  "description": "Benchmark multiple endpoints with weighted distribution",
+  "settings": {
+    "concurrentUsers": 20,
+    "duration": "60s",
+    "timeout": "15s"
+  },
+  "variables": {
+    "baseUrl": "https://api.example.com"
+  },
+  "defaultHeaders": {
+    "Accept": "application/json",
+    "X-Client-ID": "benchmark-tool"
+  },
+  "requests": [
+    {
+      "name": "Get Users",
+      "url": "{{baseUrl}}/users",
+      "method": "GET",
+      "weight": 50
+    },
+    {
+      "name": "Get Products",
+      "url": "{{baseUrl}}/products",
+      "method": "GET",
+      "weight": 30
+    },
+    {
+      "name": "Health Check",
+      "url": "{{baseUrl}}/health",
+      "method": "GET",
+      "weight": 20
+    }
+  ],
+  "output": {
+    "format": "json",
+    "file": "results/multi-url-results.json"
+  }
+}
+

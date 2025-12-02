@@ -9,10 +9,11 @@ COPY go.mod ./
 RUN go mod download
 
 # Copy the source code
-COPY *.go ./
+COPY cmd/ ./cmd/
+COPY pkg/ ./pkg/
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o benchmarking_go .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o benchmarking_go ./cmd/
 
 # Use a smaller image for the final stage
 FROM alpine:latest  
