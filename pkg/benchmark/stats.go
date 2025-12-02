@@ -33,8 +33,12 @@ type Stats struct {
 	minResponseTime   int64
 	maxResponseTime   int64
 
-	// For standard deviation calculation
+	// For standard deviation calculation (legacy mode)
 	responseTimes []float64
+
+	// HdrHistogram for memory-efficient statistics
+	hdrStats    *HdrStats
+	useHdr      bool
 
 	// For request rate statistics
 	requestRates   []float64
@@ -45,6 +49,9 @@ type Stats struct {
 
 	// Per-request stats (for multi-URL benchmarks)
 	RequestStats map[string]*RequestStats
+
+	// Histogram display option
+	ShowHistogram bool
 }
 
 // RequestStats tracks statistics for individual request types
@@ -61,13 +68,36 @@ type RequestStats struct {
 
 // NewStats creates a new Stats instance
 func NewStats() *Stats {
-	return &Stats{
+	return NewStatsWithOptions(true, false)
+}
+
+// NewStatsWithOptions creates a new Stats instance with options
+// useHdr: use HdrHistogram for memory-efficient statistics
+// showHistogram: display ASCII histogram in output
+func NewStatsWithOptions(useHdr bool, showHistogram bool) *Stats {
+	stats := &Stats{
 		minResponseTime: math.MaxInt64,
 		errors:          make(map[string]int),
 		responseTimes:   make([]float64, 0),
 		requestRates:    make([]float64, 0),
 		RequestStats:    make(map[string]*RequestStats),
+		useHdr:          useHdr,
+		ShowHistogram:   showHistogram,
 	}
+
+	if useHdr {
+		// Initialize HdrHistogram
+		// Range: 1 microsecond to 60 seconds (60,000,000 microseconds)
+		// Precision: 3 significant figures
+		hdr, err := NewHdrStats(1, 60000000, 3)
+		if err == nil {
+			stats.hdrStats = hdr
+		} else {
+			stats.useHdr = false
+		}
+	}
+
+	return stats
 }
 
 // GetOrCreateRequestStats gets or creates stats for a specific request
@@ -101,7 +131,13 @@ func (s *Stats) AddResponseTime(responseTimeMicros int64) {
 	if responseTimeMicros > s.maxResponseTime {
 		s.maxResponseTime = responseTimeMicros
 	}
-	s.responseTimes = append(s.responseTimes, float64(responseTimeMicros))
+
+	// Use HdrHistogram if available
+	if s.useHdr && s.hdrStats != nil {
+		s.hdrStats.RecordValue(responseTimeMicros)
+	} else {
+		s.responseTimes = append(s.responseTimes, float64(responseTimeMicros))
+	}
 }
 
 // AddError tracks an error
@@ -129,6 +165,12 @@ func (s *Stats) GetLatencyPercentile(percentile int) int64 {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	// Use HdrHistogram if available
+	if s.useHdr && s.hdrStats != nil {
+		return s.hdrStats.Percentile(float64(percentile))
+	}
+
+	// Fallback to legacy method
 	if len(s.responseTimes) == 0 {
 		return 0
 	}
@@ -182,6 +224,12 @@ func (s *Stats) StandardDeviation() float64 {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	// Use HdrHistogram if available
+	if s.useHdr && s.hdrStats != nil {
+		return s.hdrStats.StdDev()
+	}
+
+	// Fallback to legacy method
 	if len(s.responseTimes) <= 1 {
 		return 0
 	}
@@ -287,5 +335,72 @@ func (s *Stats) Lock() {
 // Unlock unlocks the stats mutex
 func (s *Stats) Unlock() {
 	s.mutex.Unlock()
+}
+
+// GetHistogramBuckets returns histogram buckets for ASCII display
+func (s *Stats) GetHistogramBuckets() []HistogramBucket {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.useHdr && s.hdrStats != nil {
+		return s.hdrStats.GetHistogramBuckets()
+	}
+
+	// Fallback: create buckets from raw data
+	if len(s.responseTimes) == 0 {
+		return nil
+	}
+
+	boundaries := []int64{1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000}
+	buckets := make([]HistogramBucket, 0)
+	totalCount := int64(len(s.responseTimes))
+
+	var prevBoundary int64 = 0
+	for _, boundary := range boundaries {
+		count := int64(0)
+		for _, t := range s.responseTimes {
+			if int64(t) >= prevBoundary && int64(t) < boundary {
+				count++
+			}
+		}
+		if count > 0 || prevBoundary == 0 {
+			buckets = append(buckets, HistogramBucket{
+				RangeStart: prevBoundary,
+				RangeEnd:   boundary,
+				Count:      count,
+				Percentage: float64(count) / float64(totalCount) * 100,
+			})
+		}
+		prevBoundary = boundary
+	}
+
+	// Overflow bucket
+	overflowCount := int64(0)
+	for _, t := range s.responseTimes {
+		if int64(t) >= prevBoundary {
+			overflowCount++
+		}
+	}
+	if overflowCount > 0 {
+		buckets = append(buckets, HistogramBucket{
+			RangeStart: prevBoundary,
+			RangeEnd:   -1,
+			Count:      overflowCount,
+			Percentage: float64(overflowCount) / float64(totalCount) * 100,
+		})
+	}
+
+	return buckets
+}
+
+// RenderHistogram renders an ASCII histogram
+func (s *Stats) RenderHistogram() string {
+	buckets := s.GetHistogramBuckets()
+	return RenderASCIIHistogram(buckets, 40)
+}
+
+// IsUsingHdr returns whether HdrHistogram is being used
+func (s *Stats) IsUsingHdr() bool {
+	return s.useHdr && s.hdrStats != nil
 }
 

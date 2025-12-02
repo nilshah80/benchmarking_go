@@ -49,6 +49,11 @@ func WriteConsole(stats *benchmark.Stats, cfg *config.Config) {
 
 	fmt.Printf("  Throughput:   %5.2fMB/s\n", stats.ThroughputMBps())
 
+	// Show histogram if enabled
+	if stats.ShowHistogram {
+		fmt.Print(stats.RenderHistogram())
+	}
+
 	// Show per-request stats if multiple URLs
 	stats.Lock()
 	if len(stats.RequestStats) > 1 {
@@ -64,6 +69,11 @@ func WriteConsole(stats *benchmark.Stats, cfg *config.Config) {
 		}
 	}
 	stats.Unlock()
+
+	// Show HdrHistogram info if used
+	if stats.IsUsingHdr() {
+		fmt.Println("\n  [Using HdrHistogram for memory-efficient statistics]")
+	}
 }
 
 // WriteConsoleQuiet outputs minimal results to console (quiet mode)

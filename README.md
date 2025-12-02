@@ -66,7 +66,7 @@ Options:
   -t, --content-type <type>        Content-Type of the request body
   --timeout <seconds>              Timeout in seconds for each request (default: 30)
   --config <file>                  Path to JSON configuration file
-  -o, --output <format>            Output format: json, csv, or empty for console
+  -o, --output <format>            Output format: json, csv, html, or empty for console
   --output-file <file>             Output file path (default: stdout)
   -k, --insecure                   Skip TLS certificate verification
 
@@ -79,6 +79,14 @@ Output Options:
   -q, --quiet                      Quiet mode - only show final summary line
   -V, --verbose                    Verbose mode - show detailed request info
   -p, --percentiles <list>         Custom percentiles (e.g., '50,90,95,99')
+  --histogram                      Show ASCII latency histogram in output
+  --live                           Show real-time stats during benchmark
+
+Protocol Options:
+  --http2                          Enable HTTP/2 protocol
+
+Statistics Options:
+  --no-hdr                         Disable HdrHistogram (use legacy in-memory stats)
 
 Other:
   -v, --version                    Display version
@@ -155,6 +163,47 @@ Other:
 ```bash
 # Only show final summary line
 ./benchmarking_go -u https://example.com -c 10 -r 100 -q
+```
+
+### Latency Histogram
+
+```bash
+# Show ASCII histogram of latency distribution
+./benchmarking_go -u https://example.com -c 10 -d 30 --histogram
+```
+
+**Example Output:**
+```
+Latency Histogram:
+  0-1.00ms      |                                        |   0.00% (0)
+  250.00ms-500.00ms|████████████████████████████████████████|  66.67% (2)
+  500.00ms-1.00s|████████████████████                    |  33.33% (1)
+```
+
+### Live Stats Display
+
+```bash
+# Show real-time statistics during benchmark
+./benchmarking_go -u https://example.com -c 10 -d 30 --live
+```
+
+**Example Output:**
+```
+ 66% [=================================] Reqs: 1523 | Rate: 1523.4/s | Avg: 12.3ms | Err: 0
+```
+
+### HTTP/2 Protocol
+
+```bash
+# Enable HTTP/2 for modern APIs
+./benchmarking_go -u https://example.com -c 10 -d 30 --http2
+```
+
+### HTML Report
+
+```bash
+# Generate a visual HTML report
+./benchmarking_go -u https://example.com -c 10 -d 30 -o html --output-file report.html
 ```
 
 ### Using Docker

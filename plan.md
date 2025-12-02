@@ -135,33 +135,44 @@ Support complex request bodies defined in the JSON configuration file. This avoi
 
 ## 📊 Enhanced Statistics
 
-### 6. Histogram Output
+### 6. Histogram Output ✅ COMPLETED
 ASCII histogram of latency distribution for visual analysis.
+
+**Usage:**
+```bash
+./benchmarking_go -u https://api.com -c 10 -d 30 --histogram
+```
 
 **Example Output:**
 ```
 Latency Histogram:
-  0-10ms   |████████████████████████████████| 45.2%
-  10-50ms  |██████████████████              | 32.1%
-  50-100ms |████████                        | 15.3%
-  100ms+   |███                             |  7.4%
+  0-1.00ms      |                                        |   0.00% (0)
+  250.00ms-500.00ms|████████████████████████████████████████|  66.67% (2)
+  500.00ms-1.00s|████████████████████                    |  33.33% (1)
 ```
 
 **Priority:** Medium  
-**Complexity:** Low
+**Complexity:** Low  
+**Status:** ✅ Implemented in Phase 4
 
 ---
 
-### 7. Real-Time Stats Display
+### 7. Real-Time Stats Display ✅ COMPLETED
 Live updating statistics during the benchmark (similar to `htop` style).
+
+**Usage:**
+```bash
+./benchmarking_go -u https://api.com -c 10 -d 30 --live
+```
 
 **Example Output:**
 ```
-[Live] Reqs: 15,234 | Rate: 1,523/s | Avg: 12.3ms | Errors: 0
+ 66% [=================================] Reqs: 1523 | Rate: 1523.4/s | Avg: 12.3ms | Err: 0
 ```
 
 **Priority:** Medium  
-**Complexity:** Medium
+**Complexity:** Medium  
+**Status:** ✅ Implemented in Phase 4
 
 ---
 
@@ -178,17 +189,34 @@ Allow custom percentiles (p95, p99.9, etc.).
 
 ---
 
-### 9. Memory-Efficient Statistics (HdrHistogram)
+### 9. Memory-Efficient Statistics (HdrHistogram) ✅ COMPLETED
 Replace the in-memory `[]float64` with [HdrHistogram](https://github.com/HdrHistogram/hdrhistogram-go) for constant memory usage regardless of test duration.
 
+**Usage:**
+```bash
+# HdrHistogram is enabled by default
+./benchmarking_go -u https://api.com -c 10 -d 30
+
+# To disable and use legacy in-memory stats
+./benchmarking_go -u https://api.com -c 10 -d 30 --no-hdr
+```
+
+**Features:**
+- Constant memory usage regardless of test duration
+- Accurate percentile calculations
+- Efficient histogram bucketing
+- Configurable precision (3 significant figures)
+- Range: 1 microsecond to 60 seconds
+
 **Priority:** Medium  
-**Complexity:** Medium
+**Complexity:** Medium  
+**Status:** ✅ Implemented in Phase 4
 
 ---
 
 ## 🔧 Protocol & Connection Features
 
-### 10. HTTP/2 Support
+### 10. HTTP/2 Support ✅ COMPLETED
 Explicit HTTP/2 with multiplexing for modern API testing.
 
 **Usage:**
@@ -196,8 +224,14 @@ Explicit HTTP/2 with multiplexing for modern API testing.
 ./benchmarking_go -u https://api.com --http2
 ```
 
+**Features:**
+- Uses `golang.org/x/net/http2` transport
+- Automatic connection multiplexing
+- Only works with HTTPS endpoints
+
 **Priority:** High  
-**Complexity:** Medium
+**Complexity:** Medium  
+**Status:** ✅ Implemented in Phase 4
 
 ---
 
@@ -495,16 +529,28 @@ Export metrics over time for Grafana/Prometheus visualization.
 
 ---
 
-### 20. HTML Report Generation
-Generate a self-contained HTML report with charts.
+### 20. HTML Report Generation ✅ COMPLETED
+Generate a self-contained HTML report with visual presentation.
 
 **Usage:**
 ```bash
-./benchmarking_go -u https://api.com --report benchmark_report.html
+./benchmarking_go -u https://api.com -c 10 -d 30 -o html --output-file report.html
 ```
 
+**Features:**
+- Modern dark theme design
+- Summary cards for key metrics
+- Latency percentile table
+- Visual histogram with bar charts
+- HTTP status code breakdown
+- Per-request statistics for multi-URL tests
+- Error summary
+- Configuration overview
+- Self-contained (no external dependencies)
+
 **Priority:** Medium  
-**Complexity:** High
+**Complexity:** High  
+**Status:** ✅ Implemented in Phase 4
 
 ---
 
@@ -732,14 +778,14 @@ Core infrastructure that enables most other features.
 | Request scenarios/sequences (#15) | High | ⬜ Planned |
 | Thresholds for CI/CD | Medium | ⬜ Planned |
 
-### Phase 4: Performance & Analysis
+### Phase 4: Performance & Analysis ✅ COMPLETED
 | Feature | Complexity | Status |
 |---------|------------|--------|
-| HTTP/2 support (#10) | Medium | ⬜ Planned |
-| HdrHistogram integration (#9) | Medium | ⬜ Planned |
-| HTML report generation (#20) | High | ⬜ Planned |
-| Histogram output (#6) | Low | ⬜ Planned |
-| Real-time stats display (#7) | Medium | ⬜ Planned |
+| HTTP/2 support (#10) | Medium | ✅ COMPLETED |
+| HdrHistogram integration (#9) | Medium | ✅ COMPLETED |
+| HTML report generation (#20) | High | ✅ COMPLETED |
+| Histogram output (#6) | Low | ✅ COMPLETED |
+| Real-time stats display (#7) | Medium | ✅ COMPLETED |
 
 ### Phase 5: Enterprise Features
 | Feature | Complexity | Status |

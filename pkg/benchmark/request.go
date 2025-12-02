@@ -7,26 +7,56 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/benchmarking_go/pkg/config"
+	"golang.org/x/net/http2"
 )
 
 // createHTTPClient creates and configures the HTTP client
 func (r *Runner) createHTTPClient() {
+	// Base TLS config
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: r.Config.Settings.Insecure,
+	}
+
+	// Check if HTTP/2 is enabled
+	if r.Config.Settings.HTTP2 {
+		r.createHTTP2Client(tlsConfig)
+		return
+	}
+
+	// Standard HTTP/1.1 transport
 	transport := &http.Transport{
 		MaxIdleConns:        r.Config.Settings.ConcurrentUsers,
 		MaxIdleConnsPerHost: r.Config.Settings.ConcurrentUsers,
 		MaxConnsPerHost:     r.Config.Settings.ConcurrentUsers,
 		DisableCompression:  false,
 		DisableKeepAlives:   r.Config.IsKeepAliveDisabled(),
+		TLSClientConfig:     tlsConfig,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
 	}
 
-	// Configure TLS
-	if r.Config.Settings.Insecure {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	r.client = &http.Client{
+		Timeout:   time.Duration(r.TimeoutSec) * time.Second,
+		Transport: transport,
+	}
+}
+
+// createHTTP2Client creates an HTTP/2 enabled client
+func (r *Runner) createHTTP2Client(tlsConfig *tls.Config) {
+	// HTTP/2 transport
+	transport := &http2.Transport{
+		TLSClientConfig: tlsConfig,
+		AllowHTTP:       false, // Only allow HTTPS for HTTP/2
+		ReadIdleTimeout: 30 * time.Second,
+		PingTimeout:     15 * time.Second,
 	}
 
 	r.client = &http.Client{

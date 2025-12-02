@@ -19,15 +19,22 @@ type Bar struct {
 	mutex           sync.Mutex
 	done            bool
 	quiet           bool
+	showLiveStats   bool
 }
 
 // NewBar creates a new progress bar
 func NewBar(durationMode bool, quiet bool) *Bar {
+	return NewBarWithOptions(durationMode, quiet, false)
+}
+
+// NewBarWithOptions creates a new progress bar with additional options
+func NewBarWithOptions(durationMode bool, quiet bool, showLiveStats bool) *Bar {
 	p := &Bar{
-		blockCount:   50,
-		startTime:    time.Now(),
-		durationMode: durationMode,
-		quiet:        quiet,
+		blockCount:    50,
+		startTime:     time.Now(),
+		durationMode:  durationMode,
+		quiet:         quiet,
+		showLiveStats: showLiveStats,
 	}
 
 	if !quiet {
@@ -40,6 +47,19 @@ func NewBar(durationMode bool, quiet bool) *Bar {
 
 // Report updates the progress bar
 func (p *Bar) Report(value float64, requestCount int) {
+	p.ReportWithStats(value, requestCount, nil)
+}
+
+// LiveStats holds real-time statistics for display
+type LiveStats struct {
+	RequestsPerSec float64
+	AvgLatencyUs   float64
+	ErrorCount     int64
+	SuccessCount   int64
+}
+
+// ReportWithStats updates the progress bar with optional live stats
+func (p *Bar) ReportWithStats(value float64, requestCount int, stats *LiveStats) {
 	if p.quiet {
 		return
 	}
@@ -56,7 +76,18 @@ func (p *Bar) Report(value float64, requestCount int) {
 	percent := int(p.currentProgress * 100)
 
 	var text string
-	if requestCount > 0 {
+	if p.showLiveStats && stats != nil {
+		// Live stats mode: show compact stats
+		latencyStr := formatLatencyCompact(stats.AvgLatencyUs)
+		text = fmt.Sprintf(" %3d%% [%s%s] Reqs: %d | Rate: %.1f/s | Avg: %s | Err: %d",
+			percent,
+			strings.Repeat("=", progressBlockCount),
+			strings.Repeat(" ", p.blockCount-progressBlockCount),
+			requestCount,
+			stats.RequestsPerSec,
+			latencyStr,
+			stats.ErrorCount)
+	} else if requestCount > 0 {
 		text = fmt.Sprintf(" %3d%% [%s%s] (%d requests)",
 			percent,
 			strings.Repeat("=", progressBlockCount),
@@ -70,6 +101,17 @@ func (p *Bar) Report(value float64, requestCount int) {
 	}
 
 	p.updateText(text)
+}
+
+// formatLatencyCompact formats latency in microseconds to a compact string
+func formatLatencyCompact(us float64) string {
+	if us < 1000 {
+		return fmt.Sprintf("%.0fus", us)
+	} else if us < 1000000 {
+		return fmt.Sprintf("%.1fms", us/1000)
+	} else {
+		return fmt.Sprintf("%.2fs", us/1000000)
+	}
 }
 
 func (p *Bar) updateText(text string) {

@@ -31,6 +31,11 @@ type Runner struct {
 
 // NewRunner creates a new benchmark runner
 func NewRunner(cfg *config.Config, durationSec, timeoutSec, rampUpSec int, quietMode, verboseMode bool) *Runner {
+	// Create stats with histogram settings from config
+	useHdr := !cfg.Settings.DisableHdr
+	showHistogram := cfg.Settings.ShowHistogram
+	stats := NewStatsWithOptions(useHdr, showHistogram)
+
 	return &Runner{
 		Config:      cfg,
 		DurationSec: durationSec,
@@ -38,7 +43,7 @@ func NewRunner(cfg *config.Config, durationSec, timeoutSec, rampUpSec int, quiet
 		RampUpSec:   rampUpSec,
 		QuietMode:   quietMode,
 		VerboseMode: verboseMode,
-		Stats:       NewStats(),
+		Stats:       stats,
 		selector:    NewWeightedRequestSelector(cfg.Requests),
 	}
 }
@@ -68,7 +73,7 @@ func (r *Runner) Run(ctx context.Context) *Stats {
 		r.printBenchmarkStart(totalRequests)
 	}
 
-	progressBar := progress.NewBar(r.DurationSec > 0, r.QuietMode)
+	progressBar := progress.NewBarWithOptions(r.DurationSec > 0, r.QuietMode, r.Config.Settings.ShowLiveStats)
 	defer progressBar.Close()
 
 	// Start progress tracking
@@ -135,17 +140,29 @@ func (r *Runner) startProgressTracking(ctx context.Context, stopwatch time.Time,
 				return
 			case <-ticker.C:
 				elapsedSeconds := time.Since(stopwatch).Seconds()
+				currentRate := float64(0)
 				if elapsedSeconds > 0 {
-					currentRate := float64(atomic.LoadInt64(completedRequests)) / elapsedSeconds
+					currentRate = float64(atomic.LoadInt64(completedRequests)) / elapsedSeconds
 					r.Stats.AddRequestRate(currentRate)
 				}
 
+				// Build live stats if enabled
+				var liveStats *progress.LiveStats
+				if r.Config.Settings.ShowLiveStats {
+					liveStats = &progress.LiveStats{
+						RequestsPerSec: currentRate,
+						AvgLatencyUs:   r.Stats.AverageResponseTime(),
+						ErrorCount:     atomic.LoadInt64(&r.Stats.FailureCount),
+						SuccessCount:   atomic.LoadInt64(&r.Stats.SuccessCount),
+					}
+				}
+
+				reqCount := int(atomic.LoadInt64(completedRequests))
 				if r.DurationSec > 0 {
 					progressPercent := math.Min(1.0, elapsedSeconds/float64(r.DurationSec))
-					progressBar.Report(progressPercent, int(atomic.LoadInt64(completedRequests)))
+					progressBar.ReportWithStats(progressPercent, reqCount, liveStats)
 				} else if totalRequests > 0 {
-					progressBar.Report(float64(atomic.LoadInt64(completedRequests))/float64(totalRequests),
-						int(atomic.LoadInt64(completedRequests)))
+					progressBar.ReportWithStats(float64(reqCount)/float64(totalRequests), reqCount, liveStats)
 				}
 			}
 		}

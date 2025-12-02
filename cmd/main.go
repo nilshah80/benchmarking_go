@@ -12,7 +12,7 @@ import (
 	"github.com/benchmarking_go/pkg/output"
 )
 
-const version = "2.1.0"
+const version = "2.2.0"
 
 func main() {
 	// Parse command line flags
@@ -107,6 +107,10 @@ func writeResults(stats *benchmark.Stats, cfg *config.Config, quietMode bool) {
 		}
 	case "csv":
 		if err := output.WriteCSV(stats, cfg); err != nil {
+			exitWithError("%v", err)
+		}
+	case "html":
+		if err := output.WriteHTML(stats, cfg); err != nil {
 			exitWithError("%v", err)
 		}
 	default:

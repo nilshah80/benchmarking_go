@@ -35,6 +35,10 @@ type Settings struct {
 	RateLimit        int    `json:"rateLimit,omitempty"`        // Requests per second limit
 	RampUp           string `json:"rampUp,omitempty"`           // Ramp-up duration (e.g., "10s")
 	Percentiles      []int  `json:"percentiles,omitempty"`      // Custom percentiles to report
+	ShowHistogram    bool   `json:"showHistogram,omitempty"`    // Show ASCII histogram in output
+	DisableHdr       bool   `json:"disableHdr,omitempty"`       // Disable HdrHistogram
+	HTTP2            bool   `json:"http2,omitempty"`            // Enable HTTP/2
+	ShowLiveStats    bool   `json:"showLiveStats,omitempty"`    // Show real-time stats during benchmark
 }
 
 // RequestConfig represents a single request definition
@@ -263,7 +267,8 @@ func (c *Config) ResolveRequestVariables() {
 func NewFromCLI(url, method string, headers HeaderSliceFlag, body, contentType string,
 	concurrentUsers, requestsPerUser, durationSeconds int, insecure bool,
 	outputFormat, outputFile string, rateLimit, rampUpSeconds int,
-	disableKeepAlive bool, percentiles []int) *Config {
+	disableKeepAlive bool, percentiles []int, showHistogram, disableHdr bool,
+	http2, showLiveStats bool) *Config {
 
 	config := &Config{
 		Settings: Settings{
@@ -273,6 +278,10 @@ func NewFromCLI(url, method string, headers HeaderSliceFlag, body, contentType s
 			RateLimit:        rateLimit,
 			DisableKeepAlive: disableKeepAlive,
 			Percentiles:      percentiles,
+			ShowHistogram:    showHistogram,
+			DisableHdr:       disableHdr,
+			HTTP2:            http2,
+			ShowLiveStats:    showLiveStats,
 		},
 		Requests: []RequestConfig{
 			{

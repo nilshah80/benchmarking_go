@@ -34,6 +34,14 @@ type CLIFlags struct {
 	VerboseMode      bool
 	DisableKeepAlive bool
 	Percentiles      config.IntSliceFlag
+
+	// Phase 3 features
+	ShowHistogram bool
+	NoHdr         bool // Disable HdrHistogram (use legacy stats)
+
+	// Phase 4 features
+	HTTP2         bool
+	ShowLiveStats bool
 }
 
 // parseFlags parses command line arguments and returns CLIFlags
@@ -94,6 +102,14 @@ func parseFlags() *CLIFlags {
 	flag.Var(&flags.Percentiles, "percentiles", "Custom percentiles to report (comma-separated, e.g., '50,90,95,99')")
 	flag.Var(&flags.Percentiles, "p", "Custom percentiles (shorthand)")
 
+	// Phase 3 flags
+	flag.BoolVar(&flags.ShowHistogram, "histogram", false, "Show ASCII latency histogram in output")
+	flag.BoolVar(&flags.NoHdr, "no-hdr", false, "Disable HdrHistogram (use legacy in-memory stats)")
+
+	// Phase 4 flags
+	flag.BoolVar(&flags.HTTP2, "http2", false, "Enable HTTP/2 protocol")
+	flag.BoolVar(&flags.ShowLiveStats, "live", false, "Show real-time stats during benchmark")
+
 	flag.BoolVar(&flags.ShowHelp, "help", false, "Display help message")
 	flag.BoolVar(&flags.ShowHelp, "h", false, "Display help message (shorthand)")
 
@@ -139,7 +155,8 @@ func loadConfiguration(flags *CLIFlags) (*config.Config, error) {
 			flags.URL, flags.HTTPMethod, flags.Headers, flags.RequestBody, flags.ContentType,
 			flags.ConcurrentUsers, flags.RequestsPerUser, flags.DurationSeconds, flags.Insecure,
 			flags.OutputFormat, flags.OutputFile, flags.RateLimit, flags.RampUpSeconds,
-			flags.DisableKeepAlive, flags.Percentiles,
+			flags.DisableKeepAlive, flags.Percentiles, flags.ShowHistogram, flags.NoHdr,
+			flags.HTTP2, flags.ShowLiveStats,
 		)
 	} else {
 		return nil, nil
@@ -179,6 +196,18 @@ func applyConfigOverrides(cfg *config.Config, flags *CLIFlags) {
 	}
 	if len(flags.Percentiles) > 0 && !isDefaultPercentiles(flags.Percentiles) {
 		cfg.Settings.Percentiles = flags.Percentiles
+	}
+	if flags.ShowHistogram {
+		cfg.Settings.ShowHistogram = true
+	}
+	if flags.NoHdr {
+		cfg.Settings.DisableHdr = true
+	}
+	if flags.HTTP2 {
+		cfg.Settings.HTTP2 = true
+	}
+	if flags.ShowLiveStats {
+		cfg.Settings.ShowLiveStats = true
 	}
 }
 
