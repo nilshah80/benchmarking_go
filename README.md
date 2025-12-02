@@ -37,6 +37,21 @@ go build -o benchmarking_go ./cmd/
 go build -o benchmarking_go.exe ./cmd/
 ```
 
+### Offline Build (No Internet Required)
+
+If Go module downloads are blocked in your environment:
+
+```bash
+# Build using vendored dependencies
+go build -mod=vendor -o benchmarking_go ./cmd/
+
+# Or use the build scripts
+./build-offline.sh      # Linux/Mac
+.\build-offline.ps1     # Windows
+```
+
+📖 See **[OFFLINE-BUILD.md](OFFLINE-BUILD.md)** for complete offline deployment options.
+
 ### Docker Build
 
 ```bash
@@ -428,27 +443,35 @@ benchmarking_go/
 │   ├── config/
 │   │   └── config.go            # Configuration loading and parsing
 │   ├── benchmark/
-│   │   ├── stats.go             # Statistics tracking
+│   │   ├── stats.go             # Statistics tracking (with HdrHistogram)
+│   │   ├── histogram.go         # Histogram rendering and HdrHistogram wrapper
 │   │   ├── runner.go            # Benchmark execution logic
-│   │   ├── request.go           # HTTP request processing
+│   │   ├── request.go           # HTTP request processing (HTTP/1.1 & HTTP/2)
 │   │   └── selector.go          # Weighted request selector & rate limiter
 │   ├── output/
 │   │   ├── format.go            # Latency formatting utilities
 │   │   ├── console.go           # Console output
 │   │   ├── json.go              # JSON output
-│   │   └── csv.go               # CSV output
+│   │   ├── csv.go               # CSV output
+│   │   └── html.go              # HTML report generation
 │   └── progress/
-│       └── progress.go          # Progress bar
-├── configs/
-│   └── examples/
-│       ├── simple.json          # Simple benchmark example
-│       ├── multi-url.json       # Multiple URL example
-│       ├── post-request.json    # POST request example
-│       └── ci-benchmark.json    # CI/CD configuration example
+│       └── progress.go          # Progress bar with live stats
+├── configs/examples/
+│   ├── simple.json              # Simple benchmark example
+│   ├── multi-url.json           # Multiple URL example
+│   ├── post-request.json        # POST request example
+│   └── ci-benchmark.json        # CI/CD configuration example
+├── vendor/                      # Vendored dependencies (for offline builds)
+│   ├── github.com/HdrHistogram/ # HdrHistogram library
+│   └── golang.org/x/            # HTTP/2 and text processing
 ├── go.mod                       # Go module definition
+├── go.sum                       # Dependency checksums
 ├── Dockerfile                   # Docker build configuration
+├── build-offline.ps1            # Windows offline build script
+├── build-offline.sh             # Linux/Mac offline build script
 ├── README.md                    # This documentation
 ├── EXAMPLES.md                  # Comprehensive usage examples
+├── OFFLINE-BUILD.md             # Offline deployment guide
 └── plan.md                      # Feature roadmap
 ```
 
