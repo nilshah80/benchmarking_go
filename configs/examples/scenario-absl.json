@@ -1,0 +1,44 @@
+{
+  "name": "ABSL Fund Flow Scenario",
+  "description": "Multi-step scenario: Fetch multiple fund details with variable extraction and validation",
+  "baseUrl": "https://mutualfund.adityabirlacapital.com",
+  "settings": {
+    "concurrentUsers": 1,
+    "requestsPerUser": 1,
+    "timeout": "30s"
+  },
+  "defaultHeaders": {
+    "Accept": "application/json",
+    "User-Agent": "benchmarking_go/2.2-scenario"
+  },
+  "steps": [
+    {
+      "name": "Get GOLD Fund Details",
+      "url": "{{baseUrl}}/portal/ipapi/api/products/details?fundCode=GOLD",
+      "method": "GET",
+      "extract": {
+        "fundName": "data.meta.title",
+        "fundCode": "data.fundCode"
+      },
+      "validate": {
+        "status": 200
+      }
+    },
+    {
+      "name": "Get ACTR Fund Details",
+      "url": "{{baseUrl}}/portal/ipapi/api/products/details?fundCode=ACTR",
+      "method": "GET",
+      "delay": "500ms",
+      "extract": {
+        "actrName": "data.meta.title"
+      },
+      "validate": {
+        "status": 200
+      }
+    }
+  ],
+  "thresholds": {
+    "maxErrorRate": 0.05,
+    "maxP99Latency": "5s"
+  }
+}

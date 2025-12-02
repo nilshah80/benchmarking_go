@@ -83,6 +83,24 @@ func main() {
 
 	// Output results
 	writeResults(stats, cfg, flags.QuietMode)
+
+	// Evaluate thresholds if defined
+	if cfg.Thresholds.HasThresholds() {
+		thresholdResults, err := benchmark.EvaluateThresholds(stats, &cfg.Thresholds)
+		if err != nil {
+			exitWithError("threshold evaluation failed: %v", err)
+		}
+
+		// Print threshold results unless in quiet mode with non-console output
+		if !effectiveQuietMode {
+			fmt.Print(thresholdResults.FormatResults())
+		}
+
+		// Exit with code 1 if thresholds failed (for CI/CD integration)
+		if !thresholdResults.Passed {
+			os.Exit(1)
+		}
+	}
 }
 
 // setupSignalHandler sets up handling for Ctrl+C

@@ -50,6 +50,11 @@ func NewRunner(cfg *config.Config, durationSec, timeoutSec, rampUpSec int, quiet
 
 // Run executes the benchmark
 func (r *Runner) Run(ctx context.Context) *Stats {
+	// Check if scenario mode
+	if r.Config.IsScenarioMode() {
+		return r.RunScenario(ctx)
+	}
+
 	var wg sync.WaitGroup
 	stopwatch := time.Now()
 
@@ -100,6 +105,206 @@ func (r *Runner) Run(ctx context.Context) *Stats {
 	}
 
 	return r.Stats
+}
+
+// RunScenario executes the benchmark in scenario mode
+func (r *Runner) RunScenario(ctx context.Context) *Stats {
+	var wg sync.WaitGroup
+	stopwatch := time.Now()
+
+	// Create cancellation context
+	benchCtx, benchCancel := r.createBenchmarkContext(ctx)
+	if r.DurationSec <= 0 {
+		defer benchCancel()
+	}
+
+	// In scenario mode, each "iteration" is one complete scenario run
+	// Total requests = scenarios * steps per scenario
+	totalScenarios := r.Config.Settings.ConcurrentUsers * r.Config.Settings.RequestsPerUser
+	stepsPerScenario := len(r.Config.Steps)
+	var completedScenarios int64 = 0
+
+	// Console output
+	if !r.QuietMode {
+		r.printScenarioStart(totalScenarios, stepsPerScenario)
+	}
+
+	progressBar := progress.NewBarWithOptions(r.DurationSec > 0, r.QuietMode, r.Config.Settings.ShowLiveStats)
+	defer progressBar.Close()
+
+	// Create HTTP client
+	r.createHTTPClient()
+
+	// Start progress tracking for scenarios
+	r.startScenarioProgressTracking(benchCtx, stopwatch, &completedScenarios, totalScenarios, progressBar)
+
+	// Start scenario workers
+	r.startScenarioWorkers(benchCtx, benchCancel, &wg, &completedScenarios, totalScenarios)
+
+	wg.Wait()
+
+	progressBar.ForceComplete(time.Since(stopwatch), int(completedScenarios))
+
+	// Calculate final statistics
+	elapsed := time.Since(stopwatch)
+	r.Stats.TotalRequests = completedScenarios * int64(stepsPerScenario)
+	r.Stats.TotalDuration = elapsed.Seconds()
+	r.Stats.RequestsPerSecond = float64(r.Stats.TotalRequests) / r.Stats.TotalDuration
+
+	if !r.QuietMode {
+		fmt.Println(" Done!")
+	}
+
+	return r.Stats
+}
+
+// printScenarioStart prints the scenario benchmark configuration at start
+func (r *Runner) printScenarioStart(totalScenarios, stepsPerScenario int) {
+	fmt.Printf("Scenario: %s\n", r.Config.Name)
+	if r.Config.Description != "" {
+		fmt.Printf("Description: %s\n", r.Config.Description)
+	}
+	fmt.Printf("Steps: %d\n", stepsPerScenario)
+	for i, step := range r.Config.Steps {
+		fmt.Printf("  %d. %s: %s %s\n", i+1, step.Name, step.Method, step.URL)
+	}
+	fmt.Printf("Concurrent users: %d\n", r.Config.Settings.ConcurrentUsers)
+	if r.DurationSec > 0 {
+		fmt.Printf("Duration: %d seconds\n", r.DurationSec)
+	} else {
+		fmt.Printf("Scenarios per user: %d (total: %d scenarios, %d requests)\n",
+			r.Config.Settings.RequestsPerUser, totalScenarios, totalScenarios*stepsPerScenario)
+	}
+	fmt.Println()
+}
+
+// startScenarioProgressTracking starts progress tracking for scenario mode
+func (r *Runner) startScenarioProgressTracking(ctx context.Context, stopwatch time.Time, completedScenarios *int64, totalScenarios int, progressBar *progress.Bar) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				elapsedSeconds := time.Since(stopwatch).Seconds()
+				completed := atomic.LoadInt64(completedScenarios)
+				stepsPerScenario := len(r.Config.Steps)
+				totalRequests := completed * int64(stepsPerScenario)
+
+				currentRate := float64(0)
+				if elapsedSeconds > 0 {
+					currentRate = float64(totalRequests) / elapsedSeconds
+					r.Stats.AddRequestRate(currentRate)
+				}
+
+				// Build live stats if enabled
+				var liveStats *progress.LiveStats
+				if r.Config.Settings.ShowLiveStats {
+					liveStats = &progress.LiveStats{
+						RequestsPerSec: currentRate,
+						AvgLatencyUs:   r.Stats.AverageResponseTime(),
+						ErrorCount:     atomic.LoadInt64(&r.Stats.FailureCount),
+						SuccessCount:   atomic.LoadInt64(&r.Stats.SuccessCount),
+					}
+				}
+
+				if r.DurationSec > 0 {
+					progressPercent := math.Min(1.0, elapsedSeconds/float64(r.DurationSec))
+					progressBar.ReportWithStats(progressPercent, int(completed), liveStats)
+				} else if totalScenarios > 0 {
+					progressBar.ReportWithStats(float64(completed)/float64(totalScenarios), int(completed), liveStats)
+				}
+			}
+		}
+	}()
+}
+
+// startScenarioWorkers starts scenario worker goroutines
+func (r *Runner) startScenarioWorkers(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, completedScenarios *int64, totalScenarios int) {
+	semaphore := make(chan struct{}, r.Config.Settings.ConcurrentUsers)
+
+	// Calculate ramp-up delay per worker
+	rampUpDelay := time.Duration(0)
+	if r.RampUpSec > 0 && r.Config.Settings.ConcurrentUsers > 1 {
+		rampUpDelay = time.Duration(r.RampUpSec) * time.Second / time.Duration(r.Config.Settings.ConcurrentUsers-1)
+	}
+
+	for i := 0; i < r.Config.Settings.ConcurrentUsers; i++ {
+		wg.Add(1)
+		workerIndex := i
+
+		go func() {
+			defer wg.Done()
+			r.runScenarioWorker(ctx, cancel, workerIndex, rampUpDelay, semaphore, completedScenarios, totalScenarios)
+		}()
+	}
+}
+
+// runScenarioWorker runs a single scenario worker
+func (r *Runner) runScenarioWorker(ctx context.Context, cancel context.CancelFunc, workerIndex int, rampUpDelay time.Duration, semaphore chan struct{}, completedScenarios *int64, totalScenarios int) {
+	// Apply ramp-up delay
+	if rampUpDelay > 0 && workerIndex > 0 {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(rampUpDelay * time.Duration(workerIndex)):
+		}
+	}
+
+	atomic.AddInt32(&r.activeWorkers, 1)
+	defer atomic.AddInt32(&r.activeWorkers, -1)
+
+	if r.VerboseMode && !r.QuietMode {
+		fmt.Printf("[verbose] Scenario worker %d started\n", workerIndex)
+	}
+
+	executor := NewScenarioExecutor(r.Config, r.client, r.TimeoutSec, r.VerboseMode, r.Stats)
+
+	if r.DurationSec > 0 {
+		// Duration mode
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case semaphore <- struct{}{}:
+				executor.ExecuteScenario(ctx)
+				atomic.AddInt64(completedScenarios, 1)
+				<-semaphore
+			}
+		}
+	} else {
+		// Fixed count mode
+		for j := 0; j < r.Config.Settings.RequestsPerUser; j++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case semaphore <- struct{}{}:
+				executor.ExecuteScenario(ctx)
+				atomic.AddInt64(completedScenarios, 1)
+				<-semaphore
+
+				completed := atomic.LoadInt64(completedScenarios)
+				if completed >= int64(totalScenarios) {
+					cancel()
+					return
+				}
+			}
+		}
+	}
 }
 
 // createBenchmarkContext creates the benchmark context with optional duration timer

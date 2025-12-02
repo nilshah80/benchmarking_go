@@ -15,11 +15,98 @@ type Config struct {
 	Schema         string            `json:"$schema,omitempty"`
 	Name           string            `json:"name,omitempty"`
 	Description    string            `json:"description,omitempty"`
+	BaseURL        string            `json:"baseUrl,omitempty"` // Base URL for scenario mode
 	Settings       Settings          `json:"settings,omitempty"`
 	Variables      map[string]string `json:"variables,omitempty"`
 	DefaultHeaders map[string]string `json:"defaultHeaders,omitempty"`
-	Requests       []RequestConfig   `json:"requests"`
+	Requests       []RequestConfig   `json:"requests,omitempty"`
+	Steps          []StepConfig      `json:"steps,omitempty"` // Scenario mode: sequential steps
 	Output         OutputConfig      `json:"output,omitempty"`
+	Thresholds     ThresholdConfig   `json:"thresholds,omitempty"`
+}
+
+// StepConfig represents a single step in a scenario sequence
+type StepConfig struct {
+	Name     string            `json:"name"`
+	URL      string            `json:"url"`
+	Method   string            `json:"method,omitempty"`
+	Headers  map[string]string `json:"headers,omitempty"`
+	Body     interface{}       `json:"body,omitempty"`
+	BodyFile string            `json:"bodyFile,omitempty"`
+	Extract  map[string]string `json:"extract,omitempty"`  // Variable extraction: {"varName": "$.jsonpath"}
+	Validate *ValidateConfig   `json:"validate,omitempty"` // Response validation
+	Delay    string            `json:"delay,omitempty"`    // Delay before this step (e.g., "500ms")
+}
+
+// ValidateConfig defines response validation rules
+type ValidateConfig struct {
+	Status          interface{}            `json:"status,omitempty"`          // Expected status code(s): int or []int
+	StatusRange     *StatusRange           `json:"statusRange,omitempty"`     // Status code range
+	BodyContains    string                 `json:"bodyContains,omitempty"`    // Body must contain this string
+	BodyNotContains string                 `json:"bodyNotContains,omitempty"` // Body must NOT contain this string
+	JSONPath        map[string]interface{} `json:"jsonPath,omitempty"`        // JSONPath assertions
+	Headers         map[string]string      `json:"headers,omitempty"`         // Expected response headers
+	ResponseTime    string                 `json:"responseTime,omitempty"`    // Max response time (e.g., "500ms")
+}
+
+// StatusRange defines a range of acceptable status codes
+type StatusRange struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+// IsScenarioMode returns true if the config defines a scenario (steps) rather than simple requests
+func (c *Config) IsScenarioMode() bool {
+	return len(c.Steps) > 0
+}
+
+// ToRequestConfig converts a StepConfig to a RequestConfig for processing
+func (s *StepConfig) ToRequestConfig() *RequestConfig {
+	return &RequestConfig{
+		Name:     s.Name,
+		URL:      s.URL,
+		Method:   s.Method,
+		Headers:  s.Headers,
+		Body:     s.Body,
+		BodyFile: s.BodyFile,
+		Weight:   1,
+	}
+}
+
+// ThresholdConfig defines pass/fail criteria for CI/CD integration
+type ThresholdConfig struct {
+	MaxErrorRate         float64 `json:"maxErrorRate,omitempty"`         // Maximum allowed error rate (0.01 = 1%)
+	MaxAvgLatency        string  `json:"maxAvgLatency,omitempty"`        // Maximum average latency (e.g., "500ms", "1s")
+	MaxP50Latency        string  `json:"maxP50Latency,omitempty"`        // Maximum P50 latency
+	MaxP75Latency        string  `json:"maxP75Latency,omitempty"`        // Maximum P75 latency
+	MaxP90Latency        string  `json:"maxP90Latency,omitempty"`        // Maximum P90 latency
+	MaxP99Latency        string  `json:"maxP99Latency,omitempty"`        // Maximum P99 latency
+	MinRequestsPerSecond float64 `json:"minRequestsPerSecond,omitempty"` // Minimum requests per second
+	MaxRequestsPerSecond float64 `json:"maxRequestsPerSecond,omitempty"` // Maximum requests per second (for rate limiting validation)
+}
+
+// HasThresholds returns true if any thresholds are defined
+func (t *ThresholdConfig) HasThresholds() bool {
+	return t.MaxErrorRate > 0 ||
+		t.MaxAvgLatency != "" ||
+		t.MaxP50Latency != "" ||
+		t.MaxP75Latency != "" ||
+		t.MaxP90Latency != "" ||
+		t.MaxP99Latency != "" ||
+		t.MinRequestsPerSecond > 0 ||
+		t.MaxRequestsPerSecond > 0
+}
+
+// ParseLatency parses a latency string (e.g., "500ms", "1s") and returns microseconds
+func ParseLatency(latencyStr string) (int64, error) {
+	if latencyStr == "" {
+		return 0, nil
+	}
+	dur, err := time.ParseDuration(latencyStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid latency format: %w", err)
+	}
+	return dur.Microseconds(), nil
 }
 
 // Settings contains global benchmark settings
@@ -32,13 +119,13 @@ type Settings struct {
 	KeepAlive        *bool  `json:"keepAlive,omitempty"`        // Pointer to distinguish unset from false
 	DisableKeepAlive bool   `json:"disableKeepAlive,omitempty"` // Alternative way to disable
 	MaxConnections   int    `json:"maxConnections,omitempty"`
-	RateLimit        int    `json:"rateLimit,omitempty"`        // Requests per second limit
-	RampUp           string `json:"rampUp,omitempty"`           // Ramp-up duration (e.g., "10s")
-	Percentiles      []int  `json:"percentiles,omitempty"`      // Custom percentiles to report
-	ShowHistogram    bool   `json:"showHistogram,omitempty"`    // Show ASCII histogram in output
-	DisableHdr       bool   `json:"disableHdr,omitempty"`       // Disable HdrHistogram
-	HTTP2            bool   `json:"http2,omitempty"`            // Enable HTTP/2
-	ShowLiveStats    bool   `json:"showLiveStats,omitempty"`    // Show real-time stats during benchmark
+	RateLimit        int    `json:"rateLimit,omitempty"`     // Requests per second limit
+	RampUp           string `json:"rampUp,omitempty"`        // Ramp-up duration (e.g., "10s")
+	Percentiles      []int  `json:"percentiles,omitempty"`   // Custom percentiles to report
+	ShowHistogram    bool   `json:"showHistogram,omitempty"` // Show ASCII histogram in output
+	DisableHdr       bool   `json:"disableHdr,omitempty"`    // Disable HdrHistogram
+	HTTP2            bool   `json:"http2,omitempty"`         // Enable HTTP/2
+	ShowLiveStats    bool   `json:"showLiveStats,omitempty"` // Show real-time stats during benchmark
 }
 
 // RequestConfig represents a single request definition
@@ -142,7 +229,17 @@ func (c *Config) SetDefaults() {
 		c.Settings.Percentiles = []int{50, 75, 90, 99}
 	}
 
-	// Set default weights and methods if not specified
+	// Initialize variables map if nil
+	if c.Variables == nil {
+		c.Variables = make(map[string]string)
+	}
+
+	// Add baseUrl to variables if specified
+	if c.BaseURL != "" {
+		c.Variables["baseUrl"] = c.BaseURL
+	}
+
+	// Set default weights and methods for requests
 	for i := range c.Requests {
 		if c.Requests[i].Weight == 0 {
 			c.Requests[i].Weight = 1
@@ -152,6 +249,16 @@ func (c *Config) SetDefaults() {
 		}
 		if c.Requests[i].Name == "" {
 			c.Requests[i].Name = fmt.Sprintf("Request %d", i+1)
+		}
+	}
+
+	// Set defaults for scenario steps
+	for i := range c.Steps {
+		if c.Steps[i].Method == "" {
+			c.Steps[i].Method = "GET"
+		}
+		if c.Steps[i].Name == "" {
+			c.Steps[i].Name = fmt.Sprintf("Step %d", i+1)
 		}
 	}
 }

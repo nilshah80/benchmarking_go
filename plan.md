@@ -774,9 +774,9 @@ Core infrastructure that enables most other features.
 | Feature | Complexity | Status |
 |---------|------------|--------|
 | Dynamic variables/templates (#14) | High | ⬜ Planned |
-| Response validation via JSON (#16) | Medium | ⬜ Planned |
-| Request scenarios/sequences (#15) | High | ⬜ Planned |
-| Thresholds for CI/CD | Medium | ⬜ Planned |
+| Response validation via JSON (#16) | Medium | ✅ Done |
+| Request scenarios/sequences (#15) | High | ✅ Done |
+| Thresholds for CI/CD | Medium | ✅ Done |
 
 ### Phase 4: Performance & Analysis ✅ COMPLETED
 | Feature | Complexity | Status |

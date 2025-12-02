@@ -1,0 +1,22 @@
+{
+  "name": "Threshold Fail Test",
+  "description": "Testing threshold failure with strict limits",
+  "settings": {
+    "concurrentUsers": 1,
+    "requestsPerUser": 2,
+    "timeout": "30s"
+  },
+  "requests": [
+    {
+      "name": "GOLD Fund Details",
+      "url": "https://mutualfund.adityabirlacapital.com/portal/ipapi/api/products/details?fundCode=GOLD",
+      "method": "GET"
+    }
+  ],
+  "thresholds": {
+    "maxErrorRate": 0.01,
+    "maxAvgLatency": "100ms",
+    "maxP99Latency": "200ms",
+    "minRequestsPerSecond": 100
+  }
+}

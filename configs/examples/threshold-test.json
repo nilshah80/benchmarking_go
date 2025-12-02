@@ -1,0 +1,27 @@
+{
+  "name": "Threshold Test - ABSL API",
+  "description": "Testing thresholds feature with ABSL mutual fund API",
+  "settings": {
+    "concurrentUsers": 1,
+    "requestsPerUser": 2,
+    "timeout": "30s"
+  },
+  "defaultHeaders": {
+    "Accept": "application/json",
+    "User-Agent": "benchmarking_go/2.2"
+  },
+  "requests": [
+    {
+      "name": "GOLD Fund Details",
+      "url": "https://mutualfund.adityabirlacapital.com/portal/ipapi/api/products/details?fundCode=GOLD",
+      "method": "GET",
+      "weight": 100
+    }
+  ],
+  "thresholds": {
+    "maxErrorRate": 0.01,
+    "maxAvgLatency": "3s",
+    "maxP99Latency": "5s",
+    "minRequestsPerSecond": 0.1
+  }
+}
