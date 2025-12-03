@@ -70,6 +70,7 @@ type PerRequestStatData struct {
 	Success    int64
 	Failed     int64
 	AvgLatency string
+	Errors     []ErrorData // Per-endpoint errors
 }
 
 // ErrorData holds error information
@@ -170,6 +171,11 @@ func buildHTMLReport(stats *benchmark.Stats, cfg *config.Config) HTMLReport {
 		if rs.RequestCount > 0 {
 			avgLatency = float64(rs.TotalLatency) / float64(rs.RequestCount)
 		}
+		// Build per-endpoint errors
+		endpointErrors := make([]ErrorData, 0, len(rs.Errors))
+		for msg, count := range rs.Errors {
+			endpointErrors = append(endpointErrors, ErrorData{Message: msg, Count: count})
+		}
 		perReqData = append(perReqData, PerRequestStatData{
 			Name:       rs.Name,
 			URL:        rs.URL,
@@ -178,6 +184,7 @@ func buildHTMLReport(stats *benchmark.Stats, cfg *config.Config) HTMLReport {
 			Success:    rs.SuccessCount,
 			Failed:     rs.FailureCount,
 			AvgLatency: FormatLatency(avgLatency),
+			Errors:     endpointErrors,
 		})
 	}
 	stats.Unlock()
@@ -189,10 +196,11 @@ func buildHTMLReport(stats *benchmark.Stats, cfg *config.Config) HTMLReport {
 		errData = append(errData, ErrorData{Message: msg, Count: count})
 	}
 
-	// Calculate success rate
+	// Calculate success rate based on processed requests (success + failure)
 	successRate := float64(0)
-	if stats.TotalRequests > 0 {
-		successRate = float64(stats.SuccessCount) / float64(stats.TotalRequests) * 100
+	totalProcessed := stats.SuccessCount + stats.FailureCount
+	if totalProcessed > 0 {
+		successRate = float64(stats.SuccessCount) / float64(totalProcessed) * 100
 	}
 
 	// Duration string
@@ -408,6 +416,27 @@ const htmlTemplate = `<!DOCTYPE html>
             border-left: 3px solid var(--error);
         }
         
+        .endpoint-errors {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+        
+        .error-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        
+        td.error {
+            color: var(--error);
+            font-weight: 600;
+        }
+        
         .config-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -536,6 +565,7 @@ const htmlTemplate = `<!DOCTYPE html>
                         <th>Success</th>
                         <th>Failed</th>
                         <th>Avg Latency</th>
+                        <th>Errors</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -545,8 +575,9 @@ const htmlTemplate = `<!DOCTYPE html>
                         <td>{{.Method}}</td>
                         <td>{{.Requests}}</td>
                         <td>{{.Success}}</td>
-                        <td>{{.Failed}}</td>
+                        <td class="{{if gt .Failed 0}}error{{end}}">{{.Failed}}</td>
                         <td>{{.AvgLatency}}</td>
+                        <td>{{if .Errors}}<div class="endpoint-errors">{{range .Errors}}<span class="error-badge">{{.Message}}: {{.Count}}</span>{{end}}</div>{{else}}-{{end}}</td>
                     </tr>
                     {{end}}
                 </tbody>

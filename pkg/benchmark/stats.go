@@ -63,6 +63,7 @@ type RequestStats struct {
 	SuccessCount int64
 	FailureCount int64
 	TotalLatency int64
+	Errors       map[string]int // Per-endpoint error tracking
 	Mutex        sync.Mutex
 }
 
@@ -113,6 +114,7 @@ func (s *Stats) GetOrCreateRequestStats(name, url, method string) *RequestStats 
 		Name:   name,
 		URL:    url,
 		Method: method,
+		Errors: make(map[string]int),
 	}
 	s.RequestStats[name] = stats
 	return stats

@@ -129,6 +129,7 @@ func WriteCSVPerRequest(stats *benchmark.Stats, cfg *config.Config) error {
 		"success_count",
 		"failure_count",
 		"avg_latency_us",
+		"errors",
 	}
 
 	if err := writer.Write(header); err != nil {
@@ -147,6 +148,19 @@ func WriteCSVPerRequest(stats *benchmark.Stats, cfg *config.Config) error {
 			avgLatency = float64(rs.TotalLatency) / float64(rs.RequestCount)
 		}
 
+		// Format errors as "error1:count1;error2:count2"
+		errorStr := ""
+		if len(rs.Errors) > 0 {
+			first := true
+			for errMsg, count := range rs.Errors {
+				if !first {
+					errorStr += ";"
+				}
+				errorStr += fmt.Sprintf("%s:%d", errMsg, count)
+				first = false
+			}
+		}
+
 		row := []string{
 			timestamp,
 			cfg.Name,
@@ -157,6 +171,7 @@ func WriteCSVPerRequest(stats *benchmark.Stats, cfg *config.Config) error {
 			strconv.FormatInt(rs.SuccessCount, 10),
 			strconv.FormatInt(rs.FailureCount, 10),
 			strconv.FormatFloat(avgLatency, 'f', 2, 64),
+			errorStr,
 		}
 
 		if err := writer.Write(row); err != nil {

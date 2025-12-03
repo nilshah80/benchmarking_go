@@ -27,6 +27,7 @@ type Runner struct {
 	selector      *WeightedRequestSelector
 	rateLimiter   *RateLimiter
 	activeWorkers int32
+	stopSending   chan struct{} // Signal to stop sending new requests (graceful shutdown)
 }
 
 // NewRunner creates a new benchmark runner
@@ -45,6 +46,7 @@ func NewRunner(cfg *config.Config, durationSec, timeoutSec, rampUpSec int, quiet
 		VerboseMode: verboseMode,
 		Stats:       stats,
 		selector:    NewWeightedRequestSelector(cfg.Requests),
+		stopSending: make(chan struct{}),
 	}
 }
 
@@ -308,16 +310,34 @@ func (r *Runner) runScenarioWorker(ctx context.Context, cancel context.CancelFun
 }
 
 // createBenchmarkContext creates the benchmark context with optional duration timer
+// Uses graceful shutdown: stops sending new requests when duration ends,
+// then waits for grace period (timeout) to allow in-flight requests to complete
 func (r *Runner) createBenchmarkContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	if r.DurationSec > 0 {
 		benchCtx, benchCancel := context.WithCancel(ctx)
 		go func() {
+			// Wait for benchmark duration
 			timer := time.NewTimer(time.Duration(r.DurationSec) * time.Second)
 			defer timer.Stop()
 			select {
 			case <-timer.C:
-				benchCancel()
+				// Signal workers to stop sending new requests
+				close(r.stopSending)
+				if !r.QuietMode {
+					fmt.Printf("\n[info] Duration reached, waiting up to %ds for in-flight requests to complete...\n", r.TimeoutSec)
+				}
+				// Grace period: wait for timeout duration to allow in-flight requests to complete
+				graceTimer := time.NewTimer(time.Duration(r.TimeoutSec) * time.Second)
+				defer graceTimer.Stop()
+				select {
+				case <-graceTimer.C:
+					// Grace period expired, force cancel
+					benchCancel()
+				case <-ctx.Done():
+					benchCancel()
+				}
 			case <-ctx.Done():
+				close(r.stopSending)
 				benchCancel()
 			}
 		}()
@@ -420,25 +440,35 @@ func (r *Runner) runWorker(ctx context.Context, cancel context.CancelFunc, worke
 	}
 }
 
-// runDurationWorker runs requests until the context is cancelled (duration mode)
+// runDurationWorker runs requests until stopSending is signaled (duration mode)
+// After stopSending, allows current in-flight request to complete before exiting
 func (r *Runner) runDurationWorker(ctx context.Context, semaphore chan struct{}, completedRequests *int64) {
 	for {
+		// Check if we should stop sending new requests
 		select {
-		case <-ctx.Done():
+		case <-r.stopSending:
 			return
 		default:
 		}
 
-		// Wait for rate limiter
-		if r.rateLimiter != nil && !r.rateLimiter.Wait(ctx) {
-			return
+		// Wait for rate limiter (still respect stopSending for quick exit)
+		if r.rateLimiter != nil {
+			select {
+			case <-r.stopSending:
+				return
+			default:
+				if !r.rateLimiter.Wait(ctx) {
+					return
+				}
+			}
 		}
 
 		select {
-		case <-ctx.Done():
+		case <-r.stopSending:
 			return
 		case semaphore <- struct{}{}:
 			reqConfig := r.selector.Select()
+			// Process request - will complete even if stopSending triggers during execution
 			r.processRequest(ctx, reqConfig)
 			atomic.AddInt64(completedRequests, 1)
 			<-semaphore

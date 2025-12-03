@@ -62,13 +62,14 @@ type ThroughputStats struct {
 
 // RequestResult contains per-request statistics
 type RequestResult struct {
-	Name         string `json:"name"`
-	URL          string `json:"url"`
-	Method       string `json:"method"`
-	RequestCount int64  `json:"request_count"`
-	SuccessCount int64  `json:"success_count"`
-	FailureCount int64  `json:"failure_count"`
-	AvgLatency   string `json:"avg_latency"`
+	Name         string         `json:"name"`
+	URL          string         `json:"url"`
+	Method       string         `json:"method"`
+	RequestCount int64          `json:"request_count"`
+	SuccessCount int64          `json:"success_count"`
+	FailureCount int64          `json:"failure_count"`
+	AvgLatency   string         `json:"avg_latency"`
+	Errors       map[string]int `json:"errors,omitempty"`
 }
 
 // ToJSONResult converts Stats to Result for JSON output
@@ -126,6 +127,14 @@ func ToJSONResult(stats *benchmark.Stats, cfg *config.Config) *Result {
 		if rs.RequestCount > 0 {
 			avgLatency = float64(rs.TotalLatency) / float64(rs.RequestCount)
 		}
+		// Copy errors map for this endpoint
+		var endpointErrors map[string]int
+		if len(rs.Errors) > 0 {
+			endpointErrors = make(map[string]int)
+			for k, v := range rs.Errors {
+				endpointErrors[k] = v
+			}
+		}
 		result.Requests = append(result.Requests, RequestResult{
 			Name:         rs.Name,
 			URL:          rs.URL,
@@ -134,6 +143,7 @@ func ToJSONResult(stats *benchmark.Stats, cfg *config.Config) *Result {
 			SuccessCount: rs.SuccessCount,
 			FailureCount: rs.FailureCount,
 			AvgLatency:   FormatLatency(avgLatency),
+			Errors:       endpointErrors,
 		})
 	}
 	stats.Unlock()

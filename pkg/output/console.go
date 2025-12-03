@@ -66,6 +66,13 @@ func WriteConsole(stats *benchmark.Stats, cfg *config.Config) {
 			fmt.Printf("    %s (%s %s)\n", rs.Name, rs.Method, rs.URL)
 			fmt.Printf("      Requests: %d, Success: %d, Failed: %d, Avg Latency: %s\n",
 				rs.RequestCount, rs.SuccessCount, rs.FailureCount, FormatLatency(avgLatency))
+			// Display per-endpoint errors if any
+			if len(rs.Errors) > 0 {
+				fmt.Println("      Errors:")
+				for errMsg, count := range rs.Errors {
+					fmt.Printf("        %s - %d\n", errMsg, count)
+				}
+			}
 		}
 	}
 	stats.Unlock()
