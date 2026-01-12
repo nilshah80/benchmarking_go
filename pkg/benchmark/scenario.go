@@ -4,18 +4,26 @@ package benchmark
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
+	mrand "math/rand"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/benchmarking_go/pkg/config"
 	"github.com/tidwall/gjson"
 )
+
+// Global counter for unique iteration IDs
+var iterationCounter int64
 
 // ScenarioResult represents the result of a single scenario execution
 type ScenarioResult struct {
@@ -433,12 +441,96 @@ func extractValue(body string, pathOrExpr string, headers http.Header) string {
 }
 
 // resolveVariables replaces {{varName}} placeholders with values
+// Also supports dynamic functions:
+//   - {{$uuid}} - generates a random UUID
+//   - {{$randomInt}} - generates a random integer (0-999999)
+//   - {{$timestamp}} - current Unix timestamp in milliseconds
+//   - {{$iteration}} - current iteration number (globally unique)
+//   - {{$randomUser}} - generates a unique user ID like "user-abc123"
 func resolveVariables(input string, variables map[string]string) string {
 	result := input
+
+	// Handle dynamic functions first
+	result = resolveDynamicFunctions(result)
+
+	// Then resolve static variables
 	for key, value := range variables {
 		result = strings.ReplaceAll(result, "{{"+key+"}}", value)
 	}
 	return result
+}
+
+// resolveDynamicFunctions replaces dynamic function placeholders with generated values
+func resolveDynamicFunctions(input string) string {
+	result := input
+
+	// Replace all occurrences of {{$uuid}}
+	for strings.Contains(result, "{{$uuid}}") {
+		result = strings.Replace(result, "{{$uuid}}", generateUUID(), 1)
+	}
+
+	// Replace all occurrences of {{$randomInt}}
+	for strings.Contains(result, "{{$randomInt}}") {
+		result = strings.Replace(result, "{{$randomInt}}", generateRandomInt(), 1)
+	}
+
+	// Replace all occurrences of {{$timestamp}}
+	for strings.Contains(result, "{{$timestamp}}") {
+		result = strings.Replace(result, "{{$timestamp}}", fmt.Sprintf("%d", time.Now().UnixMilli()), 1)
+	}
+
+	// Replace all occurrences of {{$iteration}}
+	for strings.Contains(result, "{{$iteration}}") {
+		iteration := atomic.AddInt64(&iterationCounter, 1)
+		result = strings.Replace(result, "{{$iteration}}", fmt.Sprintf("%d", iteration), 1)
+	}
+
+	// Replace all occurrences of {{$randomUser}}
+	for strings.Contains(result, "{{$randomUser}}") {
+		result = strings.Replace(result, "{{$randomUser}}", generateRandomUser(), 1)
+	}
+
+	return result
+}
+
+// generateUUID generates a random UUID v4
+func generateUUID() string {
+	uuid := make([]byte, 16)
+	_, err := rand.Read(uuid)
+	if err != nil {
+		// Fallback to math/rand if crypto/rand fails
+		for i := range uuid {
+			uuid[i] = byte(mrand.Intn(256))
+		}
+	}
+	// Set version (4) and variant bits
+	uuid[6] = (uuid[6] & 0x0f) | 0x40
+	uuid[8] = (uuid[8] & 0x3f) | 0x80
+
+	return fmt.Sprintf("%x-%x-%x-%x-%x",
+		uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:16])
+}
+
+// generateRandomInt generates a random integer between 0 and 999999
+func generateRandomInt() string {
+	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil {
+		return fmt.Sprintf("%d", mrand.Intn(1000000))
+	}
+	return n.String()
+}
+
+// generateRandomUser generates a unique user ID like "user-abc123def456"
+func generateRandomUser() string {
+	bytes := make([]byte, 6)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		// Fallback
+		for i := range bytes {
+			bytes[i] = byte(mrand.Intn(256))
+		}
+	}
+	return "user-" + hex.EncodeToString(bytes)
 }
 
 // prepareStepBody prepares the request body with variable substitution

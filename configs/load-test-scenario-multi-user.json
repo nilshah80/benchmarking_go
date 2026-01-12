@@ -1,0 +1,129 @@
+{
+  "$schema": "https://benchmarking-go/schema/v1.json",
+  "name": "Identity Service - Token Lifecycle Multi-User Scenario Test",
+  "description": "Multi-step scenario testing complete token lifecycle with unique users per iteration: issue -> introspect -> revoke. Each iteration uses a different dynamically generated user ID.",
+  "baseUrl": "http://localhost:8140",
+
+  "settings": {
+    "concurrentUsers": 100,
+    "duration": "900s",
+    "timeout": "10s",
+    "percentiles": [50, 90, 95, 99],
+    "showHistogram": true,
+    "showLiveStats": true
+  },
+
+  "variables": {
+    "baseUrl": "http://localhost:8140",
+    "devClientAuth": "Basic ZGV2LWNsaWVudDpkZXYtc2VjcmV0LWNoYW5nZS1pbi1wcm9kdWN0aW9u"
+  },
+
+  "steps": [
+    {
+      "name": "Issue Access Token with Refresh",
+      "url": "{{baseUrl}}/v1/token/issue",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "{{devClientAuth}}"
+      },
+      "body": {
+        "audience": "orders-api",
+        "scope": "orders.read orders.write",
+        "subject": "{{$randomUser}}",
+        "include_refresh_token": true
+      },
+      "extract": {
+        "accessToken": "$.access_token",
+        "refreshToken": "$.refresh_token",
+        "subject": "$.sub"
+      },
+      "validate": {
+        "status": 200,
+        "responseTime": "1500ms"
+      }
+    },
+    {
+      "name": "Introspect Access Token",
+      "url": "{{baseUrl}}/v1/introspect",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": "token={{accessToken}}",
+
+      "validate": {
+        "status": 200,
+        "jsonPath": {
+          "$.active": true
+        },
+        "responseTime": "1200ms"
+      }
+    },
+    {
+      "name": "Refresh Token",
+      "url": "{{baseUrl}}/v1/token",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": "grant_type=refresh_token&refresh_token={{refreshToken}}",
+
+      "extract": {
+        "newAccessToken": "$.access_token",
+        "newRefreshToken": "$.refresh_token"
+      },
+      "validate": {
+        "status": 200,
+        "responseTime": "1500ms"
+      }
+    },
+    {
+      "name": "Introspect New Token",
+      "url": "{{baseUrl}}/v1/introspect",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Bearer {{newAccessToken}}"
+      },
+      "body": "token={{newAccessToken}}",
+
+      "validate": {
+        "status": 200,
+        "jsonPath": {
+          "$.active": true
+        },
+        "responseTime": "1500ms"
+      }
+    },
+    {
+      "name": "Revoke Token",
+      "url": "{{baseUrl}}/v1/revoke",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Bearer {{newAccessToken}}"
+      },
+      "body": "token={{newAccessToken}}",
+
+      "validate": {
+        "status": 200,
+        "responseTime": "1500ms"
+      }
+    }
+  ],
+
+  "output": {
+    "format": "text",
+    "file": "load-test-scenario-multi-user-report.html"
+  },
+
+  "thresholds": {
+    "maxErrorRate": 0.02,
+    "maxAvgLatency": "500ms",
+    "maxP95Latency": "800ms",
+    "maxP99Latency": "1500ms"
+  }
+}

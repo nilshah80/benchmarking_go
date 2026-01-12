@@ -1,0 +1,111 @@
+{
+  "name": "Identity Service - Internal Client Load Test",
+  "timestamp": "2026-01-09T17:56:18Z",
+  "duration_seconds": 58.5329368,
+  "total_requests": 7110,
+  "success_count": 7110,
+  "failure_count": 0,
+  "requests_per_second": {
+    "average": 121.47007118904719,
+    "std_dev": 15.136457167463117,
+    "max": 126.16296744059134
+  },
+  "latency": {
+    "average": "374.27ms",
+    "std_dev": "196.71ms",
+    "min": "1.80ms",
+    "max": "2.32s",
+    "percentiles": {
+      "p50": "380.93ms",
+      "p90": "530.43ms",
+      "p95": "609.28ms",
+      "p99": "1.11s"
+    }
+  },
+  "http_codes": {
+    "1xx": 0,
+    "2xx": 7110,
+    "3xx": 0,
+    "4xx": 0,
+    "5xx": 0,
+    "other": 0
+  },
+  "throughput": {
+    "total_bytes": 1166429,
+    "mb_per_second": 0.01900457144346507
+  },
+  "requests": [
+    {
+      "name": "Token Issue - Array Audience",
+      "url": "http://localhost:8140/v1/token/issue",
+      "method": "POST",
+      "request_count": 748,
+      "success_count": 748,
+      "failure_count": 0,
+      "avg_latency": "401.53ms"
+    },
+    {
+      "name": "Token Issue - Dev Client (Custom Claims)",
+      "url": "http://localhost:8140/v1/token/issue",
+      "method": "POST",
+      "request_count": 1059,
+      "success_count": 1059,
+      "failure_count": 0,
+      "avg_latency": "405.78ms"
+    },
+    {
+      "name": "Health Check",
+      "url": "http://localhost:8140/health",
+      "method": "GET",
+      "request_count": 319,
+      "success_count": 319,
+      "failure_count": 0,
+      "avg_latency": "29.23ms"
+    },
+    {
+      "name": "Token Issue - Dev Client (With Subject)",
+      "url": "http://localhost:8140/v1/token/issue",
+      "method": "POST",
+      "request_count": 1406,
+      "success_count": 1406,
+      "failure_count": 0,
+      "avg_latency": "408.78ms"
+    },
+    {
+      "name": "Token Issue - Dev Client (Minimal)",
+      "url": "http://localhost:8140/v1/token/issue",
+      "method": "POST",
+      "request_count": 1775,
+      "success_count": 1775,
+      "failure_count": 0,
+      "avg_latency": "402.46ms"
+    },
+    {
+      "name": "Token Issue - Wildcard Client (Any Audience)",
+      "url": "http://localhost:8140/v1/token/issue",
+      "method": "POST",
+      "request_count": 1124,
+      "success_count": 1124,
+      "failure_count": 0,
+      "avg_latency": "402.74ms"
+    },
+    {
+      "name": "Token Issue - Custom TTL",
+      "url": "http://localhost:8140/v1/token/issue",
+      "method": "POST",
+      "request_count": 319,
+      "success_count": 319,
+      "failure_count": 0,
+      "avg_latency": "402.17ms"
+    },
+    {
+      "name": "Readiness Check",
+      "url": "http://localhost:8140/ready",
+      "method": "GET",
+      "request_count": 360,
+      "success_count": 360,
+      "failure_count": 0,
+      "avg_latency": "143.34ms"
+    }
+  ]
+}

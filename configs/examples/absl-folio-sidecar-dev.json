@@ -1,0 +1,48 @@
+{
+  "name": "ABSL Folio Sidecar API Benchmark",
+  "description": "Benchmark multiple folio-sidecar endpoints with POST methods",
+  "settings": {
+    "concurrentUsers": 10,
+    "requestsPerUser": 10,
+    "timeout": "30s",
+    "rampUp": "10s"
+  },
+  "defaultHeaders": {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": "benchmarking_go/2.1"
+  },
+  "requests": [
+    {
+      "name": "GetPEKRNDetail",
+      "url": "https://apidev.abslmfbeta.com/invportal/ipapi/qa/folio-sidecar/GetPEKRNDetail",
+      "method": "POST",
+      "body": "{\"PEKRNNo\": \"EC00000768\", \"UserId\": \"\", \"Password\": \"\"}",
+      "weight": 10
+    },
+    {
+      "name": "GetOTMBanks",
+      "url": "https://apidev.abslmfbeta.com/invportal/ipapi/qa/folio-sidecar/IPAPI/GetOTMBanks",
+      "method": "POST",
+      "body": "{\"folioNo\": \"1020051429\"}",
+      "weight": 10
+    },
+    {
+      "name": "GetFolioSchemeSummary",
+      "url": "https://apidev.abslmfbeta.com/invportal/ipapi/qa/folio-sidecar/GetFolioSchemeSummary",
+      "method": "POST",
+      "body": "{\"P_FOLIO_NO\": \"1016175733\", \"P_PAN_NO\": \"\", \"P_IS_MINOR\": \"N\"}",
+      "weight": 10
+    },
+    {
+      "name": "GetAccountStatementByFolio",
+      "url": "https://apidev.abslmfbeta.com/invportal/ipapi/qa/folio-sidecar/IPAPI/GetAccountStatementByFolio",
+      "method": "POST",
+      "body": "{\"FolioNo\": \"1012989982\"}",
+      "weight": 10
+    }
+  ],
+  "output": {
+    "format": "text"
+  }
+}

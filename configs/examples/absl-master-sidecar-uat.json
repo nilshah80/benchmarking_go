@@ -1,0 +1,89 @@
+{
+  "name": "ABSL Master Sidecar API Benchmark",
+  "description": "Benchmark multiple master-sidecar endpoints with GET and POST methods",
+  "settings": {
+    "concurrentUsers": 10,
+    "requestsPerUser": 100,
+    "timeout": "30s",
+    "rampUp": "10s"
+  },
+  "defaultHeaders": {
+    "Accept": "application/json",
+    "User-Agent": "benchmarking_go/2.1"
+  },
+  "requests": [
+    {
+      "name": "GetProductDetails",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetProductDetails",
+      "method": "GET",
+      "weight": 10
+    },
+    {
+      "name": "GetSolution",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetSolution",
+      "method": "GET",
+      "weight": 10
+    },
+    {
+      "name": "GetCountry",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetCountry",
+      "method": "GET",
+      "weight": 10
+    },
+    {
+      "name": "GetBanks",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetBanks",
+      "method": "GET",
+      "weight": 10
+    },
+    {
+      "name": "GetMultiSIPProductDetails",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetMultiSIPProductDetails",
+      "method": "GET",
+      "weight": 10
+    },
+    {
+      "name": "GetSateCity",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetSateCity",
+      "method": "POST",
+      "weight": 10
+    },
+    {
+      "name": "GetJANSipSchemeMaster",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetJANSipSchemeMaster",
+      "method": "GET",
+      "weight": 10
+    },
+    {
+      "name": "GetNAVForSchemeCode",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetNAVForSchemeCode/1426B",
+      "method": "GET",
+      "weight": 10
+    },
+    {
+      "name": "GetIFSCCodeDetail",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetIFSCCodeDetail",
+      "method": "POST",
+      "headers": {
+        "X-Encryption-Algorithm": "AES/CBC/PKCS5Padding",
+        "Content-Type": "text/plain"
+      },
+      "body": "H8dHln9s28mfMuvEKr4LBAXV5QvgpRuvRJFbDlbDSalWmq7kHlmDHTCw7FOCB1iduzMjTKVKsx5Ym1L5j9DoP8JafJVIBoXQnuYwU59pLAH76KpalvTebp62FyI+aoq4U1/wq5c7TsKPG00PyaVtyb5VbApv2QiiuM830u3KoKliJ950ptcOn2R6/cPxSaelIf9gY20W/X5zvnjA2ksNGOC32E9eSAMJOqi+yYElYSeFtQfITPXfuqUNRIArK7j3Co1uXsvnd2BQB8KZ3jHAyMs2oZwGLpeAkQmZNt+NrQ55JfM82UThOMzd0xC3Y3zk",
+      "weight": 10
+    },
+    {
+      "name": "GetMasterByType",
+      "url": "https://apiuat.abslmfbeta.com/invportal/ipapi/uat/master-sidecar/GetMasterByType",
+      "method": "POST",
+      "headers": {
+        "X-Encryption-Algorithm": "AES/CBC/PKCS5Padding",
+        "Content-Type": "text/plain"
+      },
+      "body": "4XV6k9ADF3+7YswBo4Fg8ADkzLmZZ8vA9vdnEVylrlx5FmHzN5I9TnC+Ip+aAKvSwN2Z9I4PfpmbLkOkyEYibeiWj8d5blhL6i44TxuUSJpWNmo47uqOZRNiYDVgdXYZaQJd28x/tGz+/GnGDungDYU9kKdnQBsR9KAKw8gZElI=",
+      "weight": 10
+    }
+  ],
+  "output": {
+    "format": "text"
+  }
+}

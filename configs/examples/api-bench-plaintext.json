@@ -1,0 +1,44 @@
+{
+  "name": "API Benchmark - Plaintext",
+  "description": "Compare plaintext response across all API services",
+  "settings": {
+    "concurrentUsers": 50,
+    "duration": "30s",
+    "timeout": "10s"
+  },
+  "requests": [
+    {
+      "name": "Node Fastify",
+      "url": "http://localhost:8083/plaintext",
+      "method": "GET",
+      "weight": 20
+    },
+    {
+      "name": "Node Fastify Cluster",
+      "url": "http://localhost:8084/plaintext",
+      "method": "GET",
+      "weight": 20
+    },
+    {
+      "name": "Java Quarkus",
+      "url": "http://localhost:8085/plaintext",
+      "method": "GET",
+      "weight": 20
+    },
+    {
+      "name": "Java WebFlux",
+      "url": "http://localhost:8086/plaintext",
+      "method": "GET",
+      "weight": 20
+    },
+    {
+      "name": "Java Virtual Threads",
+      "url": "http://localhost:8087/plaintext",
+      "method": "GET",
+      "weight": 20
+    }
+  ],
+  "output": {
+    "format": "json"
+  }
+}
